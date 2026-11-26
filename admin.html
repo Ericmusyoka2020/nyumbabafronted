@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Replace with the deployed API origin when publishing this frontend. -->
+  <meta name="api-base" content="http://localhost:4000" />
+  <title>HouseHunter — Admin Control Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .text-xs { font-size: .875rem; line-height: 1.25rem; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-900 min-h-screen">
+  <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-xl font-bold text-amber-400">HouseHunter Admin</span>
+        <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700">User Site</a>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="adminStatusLabel" class="text-xs text-slate-300"></span>
+        <button type="button" id="adminLockBtn" onclick="lockAdmin()" class="hidden px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-red-300">
+          Lock Admin
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="adminBannerWrap" class="max-w-7xl mx-auto mt-4 px-4 hidden">
+    <div class="p-3 rounded-lg bg-amber-100 text-amber-950 text-sm flex justify-between items-center">
+      <span id="adminBannerMsg"></span>
+      <button type="button" onclick="document.getElementById('adminBannerWrap').classList.add('hidden')" class="font-bold ml-4">✕</button>
+    </div>
+  </div>
+
+  <!-- Admin passcode is validated by the backend. -->
+  <main id="adminLockedBox" class="max-w-md mx-auto my-12 p-6 bg-white rounded-2xl border space-y-4">
+    <h1 class="text-xl font-bold text-center">Admin Passcode Access</h1>
+    <p class="text-xs text-slate-600 text-center">
+      Enter the administrator passcode configured on the server to open the admin dashboard.
+    </p>
+
+    <form onsubmit="unlockWithPasscode(event)" class="space-y-3">
+      <div class="relative flex items-center">
+        <input id="adminPasscodeInput" type="password" placeholder="Admin passcode" maxlength="128" class="w-full border rounded-lg px-3 py-2 pr-16 text-sm text-center tracking-widest" required />
+        <button type="button" onclick="togglePassVisibility('adminPasscodeInput', this)" class="absolute right-2 px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-100 rounded">
+          View
+        </button>
+      </div>
+      <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 text-sm font-bold">
+        Enter Admin
+      </button>
+    </form>
+  </main>
+
+  <main id="adminDashboard" class="max-w-7xl mx-auto p-4 space-y-6 hidden">
+    <section id="statsCards" class="grid grid-cols-2 md:grid-cols-6 gap-3"></section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">Admin Alerts & User Comments</h2>
+      <div id="adminAlertsList" class="space-y-2"></div>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">Reported Posts Queue</h2>
+      <div id="adminReportsList" class="space-y-2"></div>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">Post Approval & Moderation Queue</h2>
+      <label class="block max-w-xs space-y-1 text-sm font-semibold">Filter listings
+        <select id="adminPropertyFilter" onchange="renderAdminProperties()" class="w-full rounded border px-3 py-2 text-base">
+          <option value="ALL">All listings</option>
+          <option value="PENDING_APPROVAL">Pending approval</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="PAUSED">Paused</option>
+          <option value="EXPIRED">Expired</option>
+        </select>
+      </label>
+      <div id="adminPropsList" class="space-y-2"></div>
+    </section>
+
+    <form onsubmit="saveSystemConfig(event)" class="bg-white p-5 rounded-xl border space-y-3">
+      <h3 class="font-bold">Add-Photo Price & Free Post Rules</h3>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Add Photo to Existing Post (KES)</label>
+          <input id="cAddPhotoPrice" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Free Posts Allowed</label>
+          <input id="cFreePosts" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Free Post Duration (Days)</label>
+          <input id="cFreeDays" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Default Duration (Days)</label>
+          <input id="cDefaultDays" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+        </div>
+      </div>
+      <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-semibold">Save Pricing & Rules</button>
+    </form>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onsubmit="createPostPlan(event)" class="bg-white p-5 rounded-xl border space-y-3">
+        <h3 class="font-bold">Create Post Entitlement Plan</h3>
+        <input id="ppName" placeholder="Name (e.g. Standard)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="ppPrice" type="number" placeholder="Price (KES)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="ppPosts" type="number" placeholder="Posts Allowed" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="ppDays" type="number" placeholder="Duration (Days)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <button type="submit" class="w-full bg-slate-900 text-white py-2 rounded text-sm font-semibold">Save Post Plan</button>
+      </form>
+
+      <form onsubmit="createPriorityPlan(event)" class="bg-white p-5 rounded-xl border space-y-3">
+        <h3 class="font-bold">Create Priority Plan</h3>
+        <input id="prName" placeholder="Name (e.g. Featured)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="prPrice" type="number" placeholder="Price (KES)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="prDays" type="number" placeholder="Duration (Days)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <input id="prScore" type="number" placeholder="Priority Score (e.g. 20)" class="w-full border rounded px-3 py-2 text-sm" required />
+        <button type="submit" class="w-full bg-amber-600 text-white py-2 rounded text-sm font-semibold">Save Priority Plan</button>
+      </form>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">View and manage plans</h2>
+      <p class="text-sm text-slate-600">Edits are saved to the database. Deleting a plan deactivates it, preserving past payment records.</p>
+      <div id="adminPlansList" class="grid grid-cols-1 gap-3 lg:grid-cols-2"></div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-5 rounded-xl border space-y-2">
+        <h3 class="font-bold">Users & Linked Numbers</h3>
+        <div id="adminUsersList" class="space-y-2"></div>
+      </div>
+      <div class="bg-white p-5 rounded-xl border space-y-2">
+        <h3 class="font-bold">Payment Records</h3>
+        <div id="adminPaymentsList" class="space-y-2"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mx-auto mt-8 w-full max-w-7xl border-t border-slate-800 px-4 py-4 text-sm text-slate-300">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
+      <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-amber-300 underline">Powered by Stackcrafts Studio</a>
+    </div>
+  </footer>
+
+  <script>
+    const API_URL = 'https://nyumbabackedd.onrender.com';
+    let adminToken = sessionStorage.getItem('hh_admin_token') || '';
+    let adminProperties = [];
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+    function displayPropertyTypes(property) {
+      try {
+        const types = JSON.parse(property.property_types_json || '[]');
+        if (Array.isArray(types) && types.length) return types.join(', ');
+      } catch {
+        // Fall back to the legacy single property type.
+      }
+      return property.property_type || 'Property';
+    }
+
+    async function runWithButtonFeedback(btn, fn, busyLabel = 'Working...', doneLabel = null) {
+      if (!btn) return fn();
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = busyLabel;
+      try {
+        return await fn();
+      } catch (error) {
+        adminBanner(error.message || 'The request failed. Please try again.');
+        return null;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = doneLabel || origText;
+        if (doneLabel) {
+          setTimeout(() => { btn.textContent = origText; }, 1200);
+        }
+      }
+    }
+
+    window.togglePassVisibility = (inputId, btn) => {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      if (btn) btn.textContent = show ? 'Hide' : 'View';
+    };
+
+    function adminHeaders(extra = {}) {
+      return {
+        ...extra,
+        ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      };
+    }
+
+    async function adminRequest(url, options = {}) {
+      let response;
+      try {
+        response = await fetch(url, {
+          ...options,
+          headers: adminHeaders(options.headers || {}),
+        });
+      } catch {
+        throw new Error(`Could not connect to ${API_URL}. Check that the backend is running and this device can reach it.`);
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(`The server returned an invalid response (${response.status}).`);
+      }
+      if (!response.ok || !data.success) {
+        if (response.status === 401 || response.status === 403) {
+          adminToken = '';
+          sessionStorage.removeItem('hh_admin_token');
+          checkAccess();
+        }
+        throw new Error(data.message || `Request failed (${response.status}).`);
+      }
+      return data;
+    }
+
+    function adminBanner(msg) {
+      document.getElementById('adminBannerMsg').textContent = msg;
+      document.getElementById('adminBannerWrap').classList.remove('hidden');
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[char]);
+    }
+
+    function checkAccess() {
+      const unlocked = Boolean(adminToken);
+      document.getElementById('adminLockedBox').classList.toggle('hidden', unlocked);
+      document.getElementById('adminDashboard').classList.toggle('hidden', !unlocked);
+      document.getElementById('adminLockBtn').classList.toggle('hidden', !unlocked);
+      document.getElementById('adminStatusLabel').textContent = unlocked ? 'Admin Unlocked' : 'Locked';
+      if (unlocked) loadOverview().catch((error) => adminBanner(error.message || 'Could not load the admin dashboard.'));
+    }
+
+    window.unlockWithPasscode = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const passcode = document.getElementById('adminPasscodeInput').value.trim();
+        let res;
+        try {
+          res = await fetch(`${API_URL}/api/auth/admin-passcode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ passcode }),
+          });
+        } catch {
+          throw new Error(`Could not connect to ${API_URL}. Check that the backend is running and this device can reach it.`);
+        }
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(`The API at ${API_URL} returned an invalid response.`);
+        }
+        if (!res.ok || !data.success) throw new Error(data.message || 'Invalid admin passcode');
+        adminToken = data.data.token;
+        sessionStorage.setItem('hh_admin_token', adminToken);
+        checkAccess();
+      }, 'Checking...', 'Unlocked');
+    };
+
+    window.lockAdmin = () => {
+      adminToken = '';
+      sessionStorage.removeItem('hh_admin_token');
+      checkAccess();
+    };
+
+    async function loadOverview() {
+      const data = await adminRequest(`${API_URL}/api/admin/overview`);
+
+      const { stats, properties, plans, priorityPlans, users, payments, reports, alerts, config } = data.data;
+      document.getElementById('statsCards').innerHTML = `
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Pending Approval</div><div class="text-xl font-bold text-amber-600">${stats.pendingApproval}</div></div>
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Live Houses</div><div class="text-xl font-bold text-emerald-600">${stats.liveProperties}</div></div>
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Total Houses</div><div class="text-xl font-bold">${stats.totalProperties}</div></div>
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Total Users</div><div class="text-xl font-bold">${stats.totalUsers}</div></div>
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Open Reports</div><div class="text-xl font-bold text-red-600">${stats.openReports}</div></div>
+        <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Revenue (KES)</div><div class="text-xl font-bold">${Number(stats.revenue).toLocaleString()}</div></div>
+      `;
+
+      document.getElementById('adminAlertsList').innerHTML = (alerts || []).map((a) => `
+        <div class="border rounded-lg p-2.5 text-xs bg-amber-50/50">
+          <strong>${a.alert_type === 'SUSPENSION_REVIEW' ? 'Account suspension review' : 'User comment'}</strong> ·
+          <strong>${a.sender_name || 'Visitor'}</strong> ${a.sender_email ? `(${a.sender_email})` : ''}: ${a.message}
+        </div>
+      `).join('') || `<div class="text-xs text-slate-500">No alerts/comments yet.</div>`;
+
+      document.getElementById('adminReportsList').innerHTML = (reports || []).map((r) => {
+        const property = (properties || []).find((p) => p.id === r.property_id);
+        const photos = JSON.parse(property?.images_json || '[]');
+        return `
+        <details class="border rounded-lg p-3 text-sm">
+          <summary class="cursor-pointer font-semibold">${r.property_title || r.property_id} — ${r.reason} · ${r.status}</summary>
+          <div class="mt-3 space-y-2">
+            <p><strong>Report details:</strong> ${r.details || 'No extra details'}</p>
+            ${property ? `<p><strong>Listing:</strong> ${property.title} (${displayPropertyTypes(property)}) · ${Number(property.min_rent || property.monthly_rent || 0).toLocaleString()}-${Number(property.max_rent || property.monthly_rent || 0).toLocaleString()} KES / ${(property.rent_period || 'MONTH').toLowerCase()} · ${[property.town, property.county, property.estate].filter(Boolean).join(', ')}</p>
+            <p><strong>Owner:</strong> ${property.owner_name} · ${property.contact_phone || '-'} · <strong>Status:</strong> ${property.approval_status} / ${property.availability_status}</p>
+            <p><strong>Details:</strong> ${property.bedrooms || 0} bedroom(s), ${property.bathrooms || 1} bathroom(s) · Deposit ${Number(property.deposit || 0).toLocaleString()} KES · ${property.furnished_status || 'UNFURNISHED'} · Suitable for: ${property.target_tenants_desc || 'Not specified'}</p>
+            <p><strong>Landmark:</strong> ${property.pin_label || 'Not provided'}</p>
+            <p><strong>Description:</strong> ${property.description || 'No description'}</p>
+            <div class="flex flex-wrap gap-2">${photos.map((src) => `<img src="${src}" alt="Reported listing photo" class="h-24 w-32 rounded object-cover" />`).join('')}</div>` : '<p>The reported listing has been removed.</p>'}
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="decideReport('${r.id}', 'accept_remove', this)" class="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white">Accept report & remove post</button>
+              <button type="button" onclick="decideReport('${r.id}', 'reject_retain', this)" class="rounded bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Reject report & retain post</button>
+            </div>
+          </div>
+        </details>`;
+      }).join('') || `<div class="text-sm text-slate-500">No reports filed.</div>`;
+
+      adminProperties = properties || [];
+      renderAdminProperties();
+      renderAdminPlans(plans || [], priorityPlans || []);
+
+      document.getElementById('cAddPhotoPrice').value = config.add_photo_price || 30;
+      document.getElementById('cFreePosts').value = config.free_posts_allowed || 1;
+      document.getElementById('cFreeDays').value = config.free_post_duration_days || 14;
+      document.getElementById('cDefaultDays').value = config.default_post_duration_days || 30;
+
+      document.getElementById('adminUsersList').innerHTML = (users || []).map((u) => `
+        <div class="border rounded-lg p-2.5 flex justify-between items-center text-xs gap-2">
+          <div>
+            <strong>${u.full_name}</strong> (${u.email}) — <strong>${u.phone || '-'}</strong>
+            <div class="text-slate-500">Call: ${u.call_phone || '-'} • WA: ${u.whatsapp_phone || '-'}</div>
+          </div>
+          <button type="button" onclick="toggleUserSuspend('${u.id}', ${u.is_suspended ? 0 : 1}, this)" class="px-2.5 py-1 rounded border font-semibold">
+            ${u.is_suspended ? 'Activate' : 'Suspend'}
+          </button>
+        </div>
+      `).join('');
+
+      document.getElementById('adminPaymentsList').innerHTML = (payments || []).map((pay) => `
+        <div class="border rounded p-2 text-xs flex justify-between">
+          <span>${pay.purpose} — KES ${Number(pay.amount).toLocaleString()} (${pay.phone_number})</span>
+          <strong>${pay.status}</strong>
+        </div>
+      `).join('') || `<div class="text-xs text-slate-500">No payments yet.</div>`;
+    }
+
+    window.renderAdminProperties = () => {
+      const filter = document.getElementById('adminPropertyFilter')?.value || 'ALL';
+      const matches = adminProperties.filter((p) => {
+        const expired = new Date(p.expires_at).getTime() <= Date.now() || p.availability_status === 'EXPIRED';
+        if (filter === 'ALL') return true;
+        if (filter === 'EXPIRED') return expired;
+        if (filter === 'PAUSED') return p.availability_status === 'PAUSED';
+        return p.approval_status === filter;
+      });
+      document.getElementById('adminPropsList').innerHTML = matches.map((p) => {
+        const photos = JSON.parse(p.images_json || '[]');
+        const expired = new Date(p.expires_at).getTime() <= Date.now();
+        return `
+        <details class="border rounded-lg p-3 text-sm">
+          <summary class="cursor-pointer">
+            <strong>${p.title}</strong> (${displayPropertyTypes(p)}) — ${Number(p.min_rent || p.monthly_rent || 0).toLocaleString()}-${Number(p.max_rent || p.monthly_rent || 0).toLocaleString()} KES / ${(p.rent_period || 'MONTH').toLowerCase()}
+            <span class="block text-slate-600">Owner: ${p.owner_name} · ${[p.town, p.county].filter(Boolean).join(', ')} · ${p.approval_status} / ${expired ? 'EXPIRED' : p.availability_status}</span>
+          </summary>
+          <div class="mt-3 space-y-2">
+            <p><strong>Owner contact:</strong> ${p.contact_phone || '-'} · ${p.contact_whatsapp || '-'}</p>
+            <p><strong>Location:</strong> ${[p.town, p.county, p.estate, p.pin_label].filter(Boolean).join(', ') || 'Not provided'}</p>
+            <p><strong>Rent period:</strong> ${(p.rent_period || 'MONTH').toLowerCase()} · <strong>Expires:</strong> ${new Date(p.expires_at).toLocaleString()}</p>
+            <p><strong>Details:</strong> ${p.bedrooms || 0} bedroom(s), ${p.bathrooms || 1} bathroom(s) · Deposit ${Number(p.deposit || 0).toLocaleString()} KES · ${p.furnished_status || 'UNFURNISHED'} · Suitable for: ${p.target_tenants_desc || 'Not specified'}</p>
+            <p><strong>Priority:</strong> ${p.priority_label || 'Normal'} · Score ${p.priority_score || 1} ${p.priority_expires_at ? `until ${new Date(p.priority_expires_at).toLocaleString()}` : ''}</p>
+            <p><strong>Description:</strong> ${p.description || 'No description'}</p>
+            <div class="flex flex-wrap gap-2">${photos.map((src) => `<img src="${src}" alt="Listing photo" class="h-24 w-32 rounded object-cover" />`).join('')}</div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="actProp('${p.id}', 'approve', this)" class="rounded bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Approve</button>
+              <button type="button" onclick="actProp('${p.id}', 'reject', this)" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">Reject</button>
+              <button type="button" onclick="actProp('${p.id}', 'pause', this)" class="rounded border px-3 py-2 text-sm font-semibold">Pause</button>
+              ${p.availability_status === 'PAUSED' ? `<button type="button" onclick="actProp('${p.id}', 'restore', this)" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Restore paused listing</button>` : ''}
+              <button type="button" onclick="extendProp('${p.id}', this)" class="rounded border px-3 py-2 text-sm font-semibold">${expired ? 'Add days to expired listing' : 'Extend listing'}</button>
+              <button type="button" onclick="delProp('${p.id}', this)" class="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white">Delete</button>
+            </div>
+          </div>
+        </details>`;
+      }).join('') || `<div class="text-sm text-slate-500">No listings match this filter.</div>`;
+    };
+
+    window.renderAdminPlans = (plans, priorityPlans) => {
+      const renderPlan = (plan, kind) => {
+        const isPriority = kind === 'priority';
+        const prefix = `${kind}-${plan.id}`;
+        return `
+          <article id="plan-${prefix}" class="space-y-2 rounded-lg border p-3">
+            <h3 class="font-bold">${escapeHtml(plan.name)} · ${isPriority ? 'Priority boost' : 'Post plan'} ${plan.is_active ? '' : '· Inactive'}</h3>
+            <input data-field="name" value="${escapeHtml(plan.name)}" aria-label="Plan name" class="w-full rounded border px-3 py-2 text-base" />
+            <textarea data-field="description" rows="2" aria-label="Plan description" class="w-full rounded border px-3 py-2 text-base" placeholder="Description">${escapeHtml(plan.description)}</textarea>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <input data-field="price" type="number" min="0" step="0.01" value="${Number(plan.price)}" aria-label="Price in KES" class="min-w-0 rounded border px-3 py-2 text-base" />
+              ${isPriority
+                ? `<input data-field="priority_level" type="number" min="0" step="1" value="${Number(plan.priority_level)}" aria-label="Priority score" class="min-w-0 rounded border px-3 py-2 text-base" />`
+                : `<input data-field="posts_allowed" type="number" min="1" step="1" value="${Number(plan.posts_allowed)}" aria-label="Posts allowed" class="min-w-0 rounded border px-3 py-2 text-base" />`}
+              <input data-field="duration_days" type="number" min="1" step="1" value="${Number(plan.duration_days)}" aria-label="Duration in days" class="min-w-0 rounded border px-3 py-2 text-base" />
+              <label class="flex items-center gap-2 text-sm"><input data-field="is_active" type="checkbox" ${plan.is_active ? 'checked' : ''} /> Active</label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="saveAdminPlan('${kind}', '${plan.id}', this)" class="rounded bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Save changes</button>
+              <button type="button" onclick="deactivateAdminPlan('${kind}', '${plan.id}', this)" class="rounded border border-red-300 px-3 py-2 text-sm font-semibold text-red-700">Delete / deactivate</button>
+            </div>
+          </article>`;
+      };
+      document.getElementById('adminPlansList').innerHTML = `
+        <div class="space-y-3"><h3 class="text-base font-bold">Post plans</h3>${plans.map((plan) => renderPlan(plan, 'post')).join('') || '<p class="text-sm text-slate-500">No post plans configured.</p>'}</div>
+        <div class="space-y-3"><h3 class="text-base font-bold">Priority boosts</h3>${priorityPlans.map((plan) => renderPlan(plan, 'priority')).join('') || '<p class="text-sm text-slate-500">No priority plans configured.</p>'}</div>`;
+    };
+
+    window.saveAdminPlan = async (kind, id, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const card = document.getElementById(`plan-${kind}-${id}`);
+        const value = (field) => card.querySelector(`[data-field="${field}"]`);
+        const payload = {
+          name: value('name').value.trim(),
+          description: value('description').value.trim(),
+          price: Number(value('price').value),
+          duration_days: Number(value('duration_days').value),
+          priority_level: kind === 'priority' ? Number(value('priority_level').value) : 1,
+          is_active: value('is_active').checked ? 1 : 0,
+        };
+        if (kind === 'post') payload.posts_allowed = Number(value('posts_allowed').value);
+        const data = await adminRequest(`${API_URL}/api/admin/${kind === 'post' ? 'plans' : 'priority-plans'}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Saving...', 'Saved');
+    };
+
+    window.deactivateAdminPlan = async (kind, id, btn) => {
+      if (!confirm('Deactivate this plan? Existing payment records will be kept.')) return;
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/${kind === 'post' ? 'plans' : 'priority-plans'}/${id}`, { method: 'DELETE' });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Deleting...', 'Deleted');
+    };
+
+    window.extendProp = async (id, btn) => {
+      const days = Number(prompt('How many days should be added?', '30'));
+      if (!Number.isInteger(days) || days < 1 || days > 3650) {
+        adminBanner('Enter a whole number between 1 and 3650.');
+        return;
+      }
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}/extend`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ days }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Extending...', 'Extended');
+    };
+
+    window.decideReport = async (reportId, decision, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/reports/${reportId}/decision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Applying...', 'Done');
+    };
+
+    window.actProp = async (id, action, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}/${action}`, { method: 'PATCH' });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Updating...', 'Done');
+    };
+
+    window.delProp = async (id, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}`, { method: 'DELETE' });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Deleting...', 'Deleted');
+    };
+
+    window.saveSystemConfig = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            add_photo_price: Number(document.getElementById('cAddPhotoPrice').value),
+            free_posts_allowed: Number(document.getElementById('cFreePosts').value),
+            free_post_duration_days: Number(document.getElementById('cFreeDays').value),
+            default_post_duration_days: Number(document.getElementById('cDefaultDays').value),
+          }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Saving...', 'Saved');
+    };
+
+    window.createPostPlan = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/plans`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('ppName').value.trim(),
+            price: Number(document.getElementById('ppPrice').value),
+            posts_allowed: Number(document.getElementById('ppPosts').value),
+            duration_days: Number(document.getElementById('ppDays').value),
+          }),
+        });
+        e.target.reset();
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Saving...', 'Created');
+    };
+
+    window.createPriorityPlan = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/priority-plans`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('prName').value.trim(),
+            price: Number(document.getElementById('prPrice').value),
+            duration_days: Number(document.getElementById('prDays').value),
+            priority_level: Number(document.getElementById('prScore').value),
+          }),
+        });
+        e.target.reset();
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Saving...', 'Created');
+    };
+
+    window.toggleUserSuspend = async (id, is_suspended, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/users/${id}/suspend`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_suspended }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Updating...', 'Updated');
+    };
+
+    checkAccess();
+  </script>
+</body>
+</html>
