@@ -27,17 +27,17 @@
       justify-content: center;
       gap: .75rem;
       min-height: 7rem;
-      border: 1px solid #9ca3af;
+      border: 1px solid #a7f3d0;
       border-radius: .75rem;
-      background: #ffffff;
-      color: #111827;
+      background: linear-gradient(110deg, #ecfdf5, #ffffff, #eff6ff);
+      color: #065f46;
       font-weight: 600;
     }
     .listing-loader {
       width: 1.25rem;
       height: 1.25rem;
-      border: 3px solid #d1d5db;
-      border-top-color: #111827;
+      border: 3px solid #a7f3d0;
+      border-top-color: #059669;
       border-radius: 50%;
       animation: listing-spin .8s linear infinite;
     }
@@ -62,13 +62,13 @@
         <button type="button" onclick="openSupportPage()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Support system grow
         </button>
-        <button type="button" onclick="window.open('https://support.stackcrafts.com','_blank','noopener,noreferrer')" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
+        <a href="https://support.stackcrafts.com" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Buy tea ☕ for us today
-        </button>
+        </a>
         <button type="button" onclick="openCommentModal()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Comments
         </button>
-        <button type="button" onclick="document.getElementById('footerContact').scrollIntoView({behavior:'smooth'})" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Contact us</button>
+        <button type="button" onclick="openContactModal()" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Contact us</button>
         <button type="button" id="signOutBtn" onclick="handleSignOut()" class="hidden px-3 py-1.5 rounded-lg text-sm text-red-600 border border-red-200 hover:bg-red-50">
           Sign Out
         </button>
@@ -239,7 +239,11 @@
 
   <!-- USER / LANDLORD PORTAL -->
   <main id="userPortal" class="max-w-6xl w-full mx-auto p-4 space-y-6 hidden flex-1">
-    <section class="rounded-xl border bg-white p-5 space-y-3">
+    <div id="portalLoadingState" class="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-8 text-center text-emerald-900 shadow-sm" role="status" aria-live="polite">
+      <span class="listing-loader inline-block align-middle mr-2" aria-hidden="true"></span>
+      <span id="portalLoadingMessage" class="font-semibold align-middle">Loading your account and listings…</span>
+    </div>
+    <section class="portal-data-section rounded-xl border bg-white p-5 space-y-3 hidden">
       <h2 class="text-lg font-bold">Contact us</h2>
       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div class="flex flex-wrap gap-2 rounded-lg border p-3">
@@ -255,7 +259,7 @@
       </div>
     </section>
 
-    <section class="bg-white p-5 rounded-xl border space-y-3">
+    <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <div class="flex flex-wrap justify-between items-center gap-2">
         <h2 class="text-lg font-bold">1. Unique Call & WhatsApp Numbers (Once Per Account)</h2>
         <span id="accountBadge" class="text-xs text-slate-500"></span>
@@ -268,7 +272,7 @@
       </form>
     </section>
 
-    <section class="bg-white p-5 rounded-xl border space-y-3">
+    <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <p id="quotaNote" class="text-xs text-slate-500"></p>
       <details>
       <summary class="cursor-pointer text-lg font-bold">2. Create a property listing</summary>
@@ -332,7 +336,7 @@
       </details>
     </section>
 
-    <section class="bg-white p-5 rounded-xl border space-y-3">
+    <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <h2 class="text-lg font-bold">3. Your property listings</h2>
       <div class="flex flex-wrap gap-2 items-center">
         <input id="payPhone" placeholder="M-Pesa phone (07XXXXXXXX)" inputmode="tel" class="border rounded-lg px-3 py-2 text-base" />
@@ -341,12 +345,38 @@
       <div id="myHousesBox" class="space-y-3"></div>
     </section>
 
-    <section class="bg-white p-5 rounded-xl border space-y-3">
+    <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <h2 class="text-lg font-bold">4. Post Plans & Priority Boosts</h2>
       <div id="plansRow" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
       <div id="myPaymentsBox" class="space-y-2 pt-2"></div>
     </section>
   </main>
+
+  <div id="contactModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+    <section class="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+      <div class="flex items-center justify-between">
+        <h2 id="contactModalTitle" class="text-lg font-bold">Contact us</h2>
+        <button type="button" onclick="closeContactModal()" class="px-2 text-xl font-bold" aria-label="Close">×</button>
+      </div>
+      <p class="text-sm text-slate-600">Choose how you would like to reach us.</p>
+      <div class="space-y-3">
+        <div class="rounded-lg border p-3">
+          <strong class="mb-2 block">0756225185</strong>
+          <div class="flex gap-2">
+            <a href="tel:+254756225185" class="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white">Call us</a>
+            <a href="https://wa.me/254756225185" target="_blank" rel="noopener noreferrer" class="flex-1 rounded-lg bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white">WhatsApp</a>
+          </div>
+        </div>
+        <div class="rounded-lg border p-3">
+          <strong class="mb-2 block">0710911645</strong>
+          <div class="flex gap-2">
+            <a href="tel:+254710911645" class="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white">Call us</a>
+            <a href="https://wa.me/254710911645" target="_blank" rel="noopener noreferrer" class="flex-1 rounded-lg bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white">WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <div id="paymentModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <form onsubmit="confirmPayment(event)" class="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
@@ -371,12 +401,9 @@
     <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
       <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
       <div id="footerContact" class="flex flex-wrap gap-3">
-        <a href="tel:+254756225185" class="font-semibold text-blue-700 underline">Call 0756225185</a>
-        <a href="https://wa.me/254756225185" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0756225185</a>
-        <a href="tel:+254710911645" class="font-semibold text-blue-700 underline">Call 0710911645</a>
-        <a href="https://wa.me/254710911645" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0710911645</a>
+        <button type="button" onclick="openContactModal()" class="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50">Contact us</button>
         <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support system grow</button>
-        <button type="button" onclick="window.open('https://support.stackcrafts.com','_blank','noopener,noreferrer')" class="font-semibold text-amber-700 underline">Buy tea ☕ for us today</button>
+        <a href="https://support.stackcrafts.com" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-white hover:bg-amber-600">Buy tea ☕ for us today</a>
         <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-800 underline">Powered by Stackcrafts Studio</a>
       </div>
     </div>
@@ -424,6 +451,19 @@
     let pendingPayment = null;
     let activePriorityPlans = [];
     let activePostPlans = [];
+    let portalHasLoaded = false;
+
+    window.openContactModal = () => {
+      const modal = document.getElementById('contactModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeContactModal = () => {
+      const modal = document.getElementById('contactModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
 
     function propertyTypesFor(house) {
       try {
@@ -644,6 +684,7 @@
     function completeSession(u, token) {
       user = u;
       userToken = token;
+      portalHasLoaded = false;
       localStorage.setItem('hh_auth_token', userToken);
       closeAuthModal();
       refreshNav();
@@ -775,11 +816,7 @@
         document.getElementById('uCall').value = user.call_phone || user.phone || '';
         document.getElementById('uWa').value = user.whatsapp_phone || user.phone || '';
         document.getElementById('payPhone').value = user.call_phone || user.phone || '';
-        const mc = document.getElementById('modalCall'); const mw = document.getElementById('modalWa');
-        if (mc) mc.classList.add('hidden'); if (mw) mw.classList.add('hidden');
       } else {
-        const mc = document.getElementById('modalCall'); const mw = document.getElementById('modalWa');
-        if (mc) mc.classList.remove('hidden'); if (mw) mw.classList.remove('hidden');
         accountBtn.classList.remove('hidden');
         dashBtn.classList.add('hidden');
         outBtn.classList.add('hidden');
@@ -807,6 +844,7 @@
     window.handleSignOut = () => {
       user = null;
       userToken = '';
+      portalHasLoaded = false;
       localStorage.removeItem('hh_auth_token');
       refreshNav();
       showPublicBrowse();
@@ -1219,10 +1257,33 @@
     };
 
     async function loadUserPortal() {
+      const loadingState = document.getElementById('portalLoadingState');
+      const loadingMessage = document.getElementById('portalLoadingMessage');
+      if (!portalHasLoaded) {
+        loadingState.querySelector('button')?.remove();
+        loadingState.querySelector('.listing-loader')?.classList.remove('hidden');
+        loadingState.classList.remove('hidden');
+        loadingMessage.textContent = 'Loading your account and listings…';
+        document.querySelectorAll('.portal-data-section').forEach((section) => section.classList.add('hidden'));
+      }
       try {
-        return await loadUserPortalData();
+        await loadUserPortalData();
+        portalHasLoaded = true;
+        loadingState.classList.add('hidden');
+        document.querySelectorAll('.portal-data-section').forEach((section) => section.classList.remove('hidden'));
       } catch (error) {
-        banner(error.message || 'Could not load your account.');
+        const message = error.message || 'Could not load your account.';
+        banner(message);
+        if (!portalHasLoaded) {
+          loadingState.querySelector('.listing-loader')?.classList.add('hidden');
+          loadingMessage.textContent = `${message} `;
+          const retryButton = document.createElement('button');
+          retryButton.type = 'button';
+          retryButton.textContent = 'Try again';
+          retryButton.className = 'ml-2 rounded-lg border border-emerald-500 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-800';
+          retryButton.addEventListener('click', loadUserPortal);
+          loadingState.append(retryButton);
+        }
         return null;
       }
     }
@@ -1230,6 +1291,7 @@
     async function loadUserPortalData() {
       const pRes = await fetch(`${API_URL}/api/plans`);
       const pData = await pRes.json();
+      if (!pRes.ok || !pData.success) throw new Error(pData.message || 'Could not load account plans.');
       const cfg = pData.data?.config || {};
       activePostPlans = pData.data?.plans || [];
       activePriorityPlans = pData.data?.priorityPlans || [];
@@ -1248,10 +1310,7 @@
 
       const dRes = await fetch(`${API_URL}/api/user/dashboard`, { headers: authHeaders() });
       const dData = await dRes.json();
-      if (!dData.success) {
-        banner(dData.message || 'Could not load your account.');
-        return;
-      }
+      if (!dRes.ok || !dData.success) throw new Error(dData.message || 'Could not load your account.');
 
       user = dData.data.user;
       refreshNav();
