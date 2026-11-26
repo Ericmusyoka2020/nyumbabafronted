@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
   <!-- Replace with the deployed API origin when publishing this frontend. -->
   <meta name="api-base" content="http://localhost:4000" />
   <title>HouseHunter — Houses & Landlord Portal</title>
-  <script src="https://cdn.tailwindcss.com" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .text-xs { font-size: .875rem; line-height: 1.25rem; }
     html { background: #f8fafc; }
@@ -28,7 +29,7 @@
       min-height: 7rem;
       border: 1px solid #9ca3af;
       border-radius: .75rem;
-      background: linear-gradient(110deg, #fff 0%, #f3f4f6 50%, #fff 100%);
+      background: #ffffff;
       color: #111827;
       font-weight: 600;
     }
@@ -59,12 +60,15 @@
           My Listings
         </button>
         <button type="button" onclick="openSupportPage()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
-          Support
+          Support system grow
+        </button>
+        <button type="button" onclick="window.open('https://support.stackcrafts.com','_blank','noopener,noreferrer')" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
+          Buy tea ☕ for us today
         </button>
         <button type="button" onclick="openCommentModal()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Comments
         </button>
-        <a href="tel:+254756225185" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Call us</a>
+        <button type="button" onclick="document.getElementById('footerContact').scrollIntoView({behavior:'smooth'})" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Contact us</button>
         <button type="button" id="signOutBtn" onclick="handleSignOut()" class="hidden px-3 py-1.5 rounded-lg text-sm text-red-600 border border-red-200 hover:bg-red-50">
           Sign Out
         </button>
@@ -366,12 +370,13 @@
   <footer class="bg-white border-t px-4 py-4 mt-8">
     <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
       <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
-      <div class="flex flex-wrap gap-3">
+      <div id="footerContact" class="flex flex-wrap gap-3">
         <a href="tel:+254756225185" class="font-semibold text-blue-700 underline">Call 0756225185</a>
         <a href="https://wa.me/254756225185" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0756225185</a>
         <a href="tel:+254710911645" class="font-semibold text-blue-700 underline">Call 0710911645</a>
         <a href="https://wa.me/254710911645" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0710911645</a>
-        <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support (support.stackcrafts.com)</button>
+        <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support system grow</button>
+        <button type="button" onclick="window.open('https://support.stackcrafts.com','_blank','noopener,noreferrer')" class="font-semibold text-amber-700 underline">Buy tea ☕ for us today</button>
         <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-800 underline">Powered by Stackcrafts Studio</a>
       </div>
     </div>
@@ -770,7 +775,11 @@
         document.getElementById('uCall').value = user.call_phone || user.phone || '';
         document.getElementById('uWa').value = user.whatsapp_phone || user.phone || '';
         document.getElementById('payPhone').value = user.call_phone || user.phone || '';
+        const mc = document.getElementById('modalCall'); const mw = document.getElementById('modalWa');
+        if (mc) mc.classList.add('hidden'); if (mw) mw.classList.add('hidden');
       } else {
+        const mc = document.getElementById('modalCall'); const mw = document.getElementById('modalWa');
+        if (mc) mc.classList.remove('hidden'); if (mw) mw.classList.remove('hidden');
         accountBtn.classList.remove('hidden');
         dashBtn.classList.add('hidden');
         outBtn.classList.add('hidden');
@@ -911,9 +920,7 @@
         const requestSequence = ++searchSequence;
         const container = document.getElementById('housesList');
         container.setAttribute('aria-busy', 'true');
-        if (!allHouses.length) {
-          container.innerHTML = '<div id="initialListingsMessage" class="col-span-full rounded-xl p-8 text-center shadow-sm"><span class="listing-loader" aria-hidden="true"></span><span>Loading available listings…</span></div>';
-        }
+        container.innerHTML = '<div id="initialListingsMessage" class="col-span-full rounded-xl p-8 text-center shadow-sm"><span class="listing-loader" aria-hidden="true"></span><span>Loading available listings…</span></div>';
         const res = await fetch(`${API_URL}/api/properties?${params.toString()}`, { signal: searchController.signal });
         if (requestSequence !== searchSequence) return;
         const data = await res.json();
@@ -1551,8 +1558,12 @@
 
     refreshNav();
     if (!hasCookieChoice()) document.getElementById('cookieNotice').classList.remove('hidden');
-    loadHouses();
-    restoreSession();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        loadHouses();
+        restoreSession();
+      });
+    });
   </script>
 </body>
 </html>
