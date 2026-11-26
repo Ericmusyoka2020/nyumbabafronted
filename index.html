@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Replace with the deployed API origin when publishing this frontend. -->
+  <meta name="api-base" content="http://localhost:4000" />
+  <title>HouseHunter — Houses & Landlord Portal</title>
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <style>
+    .text-xs { font-size: .875rem; line-height: 1.25rem; }
+    html { background: #f8fafc; }
+    body { background: #f8fafc; color: #0f172a; }
+    body > header, body > footer, #publicSection > section:first-child,
+    #housesList article, #housesList article > div { background-color: #fff; }
+    #publicSection { color: #0f172a; }
+    #publicSection input, #publicSection select {
+      color: #0f172a;
+      background-color: #fff;
+      border: 1px solid #cbd5e1;
+    }
+    #housesList img { background: #e2e8f0; }
+    #initialListingsMessage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      min-height: 7rem;
+      border: 1px solid #9ca3af;
+      border-radius: .75rem;
+      background: linear-gradient(110deg, #fff 0%, #f3f4f6 50%, #fff 100%);
+      color: #111827;
+      font-weight: 600;
+    }
+    .listing-loader {
+      width: 1.25rem;
+      height: 1.25rem;
+      border: 3px solid #d1d5db;
+      border-top-color: #111827;
+      border-radius: 50%;
+      animation: listing-spin .8s linear infinite;
+    }
+    @keyframes listing-spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+  <header class="sticky top-0 z-20 bg-white border-b px-4 py-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <button type="button" onclick="showPublicBrowse()" class="text-xl font-bold text-emerald-700">HouseHunter</button>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" onclick="showPublicBrowse()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
+          Browse Houses
+        </button>
+        <button type="button" onclick="handlePostHouseClick()" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+          + Post a House
+        </button>
+        <button type="button" id="accountAccessBtn" onclick="openAccountAccess()" class="rounded-lg border px-3 py-1.5 text-sm font-semibold">Sign in / Create account</button>
+        <button type="button" id="myDashboardBtn" onclick="showUserPortal()" class="hidden px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-900 text-sm font-semibold">
+          My Listings
+        </button>
+        <button type="button" onclick="openSupportPage()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
+          Support
+        </button>
+        <button type="button" onclick="openCommentModal()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
+          Comments
+        </button>
+        <a href="tel:+254756225185" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Call us</a>
+        <button type="button" id="signOutBtn" onclick="handleSignOut()" class="hidden px-3 py-1.5 rounded-lg text-sm text-red-600 border border-red-200 hover:bg-red-50">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="bannerWrap" class="max-w-6xl w-full mx-auto mt-4 px-4 hidden">
+    <div class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm flex justify-between items-center">
+      <span id="bannerMsg"></span>
+      <button type="button" onclick="hideBanner()" class="font-bold ml-4">✕</button>
+    </div>
+  </div>
+
+  <!-- LOGIN & SIGN UP (WITH PHONE & PASSWORD VIEW TOGGLE) + ONE-TIME CODE FORGOT PASSWORD -->
+  <div id="authModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+          <h2 id="authTitle" class="text-lg font-bold">Your account</h2>
+        <button id="authCloseButton" type="button" onclick="closeAuthModal()" class="font-bold text-lg px-2">✕</button>
+      </div>
+      <p id="authMessage" role="status" class="hidden rounded-lg border px-3 py-2 text-sm"></p>
+
+      <section id="authStandardPanel" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="authLoginModeBtn" onclick="setAuthMode('login')" class="py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold">Log in</button>
+            <button type="button" id="authSignupModeBtn" onclick="setAuthMode('signup')" class="py-2 rounded-lg border text-sm font-semibold">Create account</button>
+          </div>
+          <form onsubmit="handleEmailAuth(event)" class="space-y-3">
+            <input id="authName" placeholder="Full name" class="hidden w-full border rounded-lg px-3 py-2 text-base" />
+            <input id="authPhone" placeholder="Phone number (e.g. 0712345678)" class="hidden w-full border rounded-lg px-3 py-2 text-base" />
+            <input id="authEmail" type="email" placeholder="Email address" class="w-full border rounded-lg px-3 py-2 text-base" required />
+            <div class="relative flex items-center">
+              <input id="authPassword" type="password" placeholder="Password (min 6 chars)" class="w-full border rounded-lg px-3 py-2 pr-16 text-base" required />
+              <button type="button" onclick="togglePassVisibility('authPassword', this)" class="absolute right-2 px-2 py-1 text-sm font-semibold text-slate-700 bg-slate-100 rounded">View</button>
+            </div>
+            <button id="authSubmitBtn" type="submit" class="w-full py-2 rounded-lg bg-slate-900 text-white text-base font-semibold">Log in</button>
+            <button type="button" onclick="showForgotPassword()" class="w-full py-1 text-base font-semibold text-blue-700 underline">Forgot password?</button>
+          </form>
+      </section>
+
+      <section id="authForgotPanel" class="hidden space-y-3">
+          <h3 class="text-lg font-bold">Reset your password</h3>
+          <p class="text-base text-slate-600">Enter your email to receive a code. Verify it before choosing a new password.</p>
+          <label class="block space-y-1 text-sm font-semibold" for="fpEmail">Account email
+            <input id="fpEmail" type="email" placeholder="Account email" class="w-full border rounded-lg px-3 py-2 text-base" />
+          </label>
+          <button type="button" onclick="requestResetCode(this)" class="w-full px-3 py-2 rounded-lg bg-amber-500 text-base font-bold">Send code</button>
+        <div id="fpCodeStep" class="hidden space-y-2">
+            <label for="fpCode" class="block text-base font-medium">Enter the code from your email</label>
+          <input id="fpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" class="w-full border rounded-lg px-3 py-2 text-base" />
+            <button type="button" onclick="verifyResetCode(this)" class="w-full py-2 rounded-lg bg-slate-800 text-white text-base font-semibold">Verify code</button>
+        </div>
+        <div id="fpPasswordStep" class="hidden space-y-2">
+            <label for="fpNewPass" class="block text-base font-medium">Choose a new password</label>
+            <input id="fpNewPass" type="password" minlength="6" placeholder="New password (at least 6 characters)" class="w-full border rounded-lg px-3 py-2 text-base" />
+            <button type="button" onclick="confirmResetWithCode(this)" class="w-full py-2 rounded-lg bg-emerald-700 text-white text-base font-semibold">Change password</button>
+          </div>
+          <button type="button" onclick="showAccountLogin()" class="w-full py-2 text-base font-semibold text-blue-700 underline">Back to sign in</button>
+      </section>
+
+      <section id="suspendedPanel" class="hidden space-y-3">
+          <h3 class="text-lg font-bold text-red-700">Account suspended</h3>
+          <p class="text-base text-slate-700">Your account access is restricted. You can only ask the admin to review the suspension; your dashboard and account actions are unavailable until it is restored.</p>
+          <form onsubmit="sendSuspensionReview(event)" class="space-y-3">
+            <label class="block space-y-1 text-sm font-semibold" for="suspensionEmail">Account email
+              <input id="suspensionEmail" type="email" readonly class="w-full rounded-lg border bg-slate-100 px-3 py-2 text-base" />
+            </label>
+            <textarea id="suspensionMessage" rows="4" maxlength="2000" placeholder="Explain why you are requesting an account review" class="w-full rounded-lg border px-3 py-2 text-base" required></textarea>
+            <button type="submit" class="w-full rounded-lg bg-slate-900 px-3 py-2 text-base font-semibold text-white">Send review request</button>
+          </form>
+      </section>
+    </div>
+  </div>
+
+  <!-- COMMENT TO ADMIN ALERT MODAL -->
+  <div id="commentModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-40">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-bold">Send Comment to Admin Alert</h2>
+        <button type="button" onclick="closeCommentModal()" class="font-bold text-lg px-2">✕</button>
+      </div>
+      <form onsubmit="submitCommentAlert(event)" class="space-y-3">
+        <input id="cmtName" placeholder="Your name (optional)" class="w-full border rounded-lg px-3 py-2 text-sm" />
+        <input id="cmtEmail" type="email" placeholder="Your email (optional)" class="w-full border rounded-lg px-3 py-2 text-sm" />
+        <textarea id="cmtMessage" placeholder="Write your comment for admin alert..." class="w-full border rounded-lg px-3 py-2 text-sm" rows="3" required></textarea>
+        <button type="submit" class="w-full py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold">Send Alert</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PUBLIC BROWSE VIEW -->
+  <main id="publicSection" class="max-w-6xl w-full mx-auto p-4 space-y-6 flex-1">
+    <section class="bg-white p-4 rounded-xl border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <input id="qInput" placeholder="Town, estate, county, title..." class="border rounded-lg px-3 py-2 text-sm" />
+      <input id="ownerSearchInput" placeholder="Owner / Agent name..." class="border rounded-lg px-3 py-2 text-sm" />
+      <select id="typeFilterInput" class="border rounded-lg px-3 py-2 text-base">
+        <option value="">All Property Types</option>
+        <option value="Single Room">Single Room</option>
+        <option value="Bedsitter">Bedsitter</option>
+        <option value="Studio">Studio</option>
+        <option value="1 Bedroom">1 Bedroom</option>
+        <option value="2 Bedroom">2 Bedroom</option>
+        <option value="3 Bedroom">3 Bedroom</option>
+        <option value="Apartment">Apartment</option>
+        <option value="House">House</option>
+        <option value="Lodging">Lodging</option>
+      </select>
+      <input id="minRentInput" type="number" placeholder="Min Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
+      <input id="maxRentInput" type="number" placeholder="Max Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
+      <select id="sortInput" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="priority">Sort: Priority</option>
+        <option value="newest">Sort: Newest</option>
+        <option value="lowest_price">Sort: Lowest Rent</option>
+        <option value="highest_price">Sort: Highest Rent</option>
+      </select>
+      <span class="col-span-full text-sm text-slate-500">Results update as you type or change filters.</span>
+    </section>
+
+    <section id="housesList" class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-live="polite" aria-busy="true">
+      <div id="initialListingsMessage" class="col-span-full rounded-xl p-8 text-center shadow-sm"><span class="listing-loader" aria-hidden="true"></span><span>Loading available listings…</span></div>
+    </section>
+  </main>
+
+  <!-- PROPERTY DETAILS, PHOTO GALLERY & REPORT MODAL -->
+  <div id="houseModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-30">
+    <div class="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start gap-2">
+        <h2 id="modalTitle" class="text-xl font-bold"></h2>
+        <button type="button" onclick="closeHouseModal()" class="font-bold text-lg px-2">✕</button>
+      </div>
+      <img id="modalMainImg" src="" alt="" class="w-full h-52 object-cover rounded-lg bg-slate-100" />
+      <div id="modalThumbBar" class="flex gap-2 flex-wrap"></div>
+      <p id="modalOwnerRow" class="text-xs font-semibold text-slate-700"></p>
+      <p id="modalType" class="text-xs font-semibold text-emerald-700"></p>
+      <p id="modalRent" class="font-bold text-lg"></p>
+      <p id="modalLoc" class="text-sm text-slate-600"></p>
+      <div class="flex flex-wrap gap-2">
+        <a id="modalMapPinBtn" href="#" target="_blank" rel="noreferrer" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold">
+          Open Location Pin on Google Maps
+        </a>
+      </div>
+      <p id="modalDesc" class="text-sm text-slate-700"></p>
+      <p id="modalTargetTenants" class="text-xs text-slate-600 italic"></p>
+
+      <div class="flex gap-2">
+        <a id="modalCall" href="#" class="flex-1 text-center py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm">Call</a>
+        <a id="modalWa" href="#" target="_blank" rel="noreferrer" class="flex-1 text-center py-2.5 rounded-lg bg-green-600 text-white font-semibold text-sm">WhatsApp</a>
+      </div>
+
+      <div class="border-t pt-3 space-y-2">
+        <div class="text-xs font-semibold text-slate-600">Report Post to Admin</div>
+        <select id="reportReason" class="w-full border rounded-lg px-3 py-2 text-sm">
+          <option value="FAKE_PROPERTY">Fake property</option>
+          <option value="WRONG_LOCATION">Wrong location</option>
+          <option value="INCORRECT_PRICE">Incorrect price</option>
+          <option value="ALREADY_OCCUPIED">Already occupied</option>
+          <option value="SCAM">Scam</option>
+          <option value="INAPPROPRIATE_CONTENT">Inappropriate content</option>
+          <option value="DUPLICATE_LISTING">Duplicate listing</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <input id="reportNote" placeholder="Optional details" class="w-full border rounded-lg px-3 py-2 text-sm" />
+        <button type="button" onclick="sendReport(this)" class="w-full py-2 rounded-lg border border-red-300 text-red-700 text-xs font-semibold">Report Post</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- USER / LANDLORD PORTAL -->
+  <main id="userPortal" class="max-w-6xl w-full mx-auto p-4 space-y-6 hidden flex-1">
+    <section class="rounded-xl border bg-white p-5 space-y-3">
+      <h2 class="text-lg font-bold">Contact us</h2>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div class="flex flex-wrap gap-2 rounded-lg border p-3">
+          <strong class="w-full">0756225185</strong>
+          <a href="tel:+254756225185" class="flex-1 rounded bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white">Call</a>
+          <a href="https://wa.me/254756225185" target="_blank" rel="noopener noreferrer" class="flex-1 rounded bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white">WhatsApp</a>
+        </div>
+        <div class="flex flex-wrap gap-2 rounded-lg border p-3">
+          <strong class="w-full">0710911645</strong>
+          <a href="tel:+254710911645" class="flex-1 rounded bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white">Call</a>
+          <a href="https://wa.me/254710911645" target="_blank" rel="noopener noreferrer" class="flex-1 rounded bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white">WhatsApp</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <div class="flex flex-wrap justify-between items-center gap-2">
+        <h2 class="text-lg font-bold">1. Unique Call & WhatsApp Numbers (Once Per Account)</h2>
+        <span id="accountBadge" class="text-xs text-slate-500"></span>
+      </div>
+      <form onsubmit="savePhones(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <input id="uName" placeholder="Full Name" class="border rounded-lg px-3 py-2 text-sm" required />
+        <input id="uCall" placeholder="Call Number (07XXXXXXXX)" class="border rounded-lg px-3 py-2 text-sm" required />
+        <input id="uWa" placeholder="WhatsApp Number (07XXXXXXXX)" class="border rounded-lg px-3 py-2 text-sm" required />
+        <button type="submit" class="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-semibold">Save Numbers</button>
+      </form>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <p id="quotaNote" class="text-xs text-slate-500"></p>
+      <details>
+      <summary class="cursor-pointer text-lg font-bold">2. Create a property listing</summary>
+      <form onsubmit="createHouse(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input id="pTitle" placeholder="House / Building Title (optional)" class="border rounded-lg px-3 py-2 text-sm" />
+        <fieldset class="space-y-2 rounded-lg border p-3 md:col-span-3">
+          <legend class="px-1 text-sm font-semibold">Types available in this building</legend>
+          <p class="text-xs text-slate-600">Select every type you have, such as single rooms, bedsitters, and one-bedroom units.</p>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Single Room" /> Single Room</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Bedsitter" /> Bedsitter</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Studio" /> Studio</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="1 Bedroom" /> 1 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="2 Bedroom" /> 2 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="3 Bedroom" /> 3 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Apartment" /> Apartment</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="House" /> House</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Lodging" /> Lodging</label>
+          </div>
+        </fieldset>
+        <div class="flex gap-2">
+          <input id="pMinRent" type="number" placeholder="Min Rent (KES)" class="w-1/2 border rounded-lg px-3 py-2 text-sm" />
+          <input id="pMaxRent" type="number" placeholder="Max Rent (KES)" class="w-1/2 border rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <select id="pRentPeriod" class="border rounded-lg px-3 py-2 text-base" aria-label="Rent charging period">
+          <option value="MONTH">Rent per month</option>
+          <option value="NIGHT">Rent per night</option>
+          <option value="DAY">Rent per day</option>
+          <option value="YEAR">Rent per year</option>
+        </select>
+        <select id="pAvailability" class="border rounded-lg px-3 py-2 text-base" aria-label="Initial property availability">
+          <option value="AVAILABLE">Available</option>
+          <option value="OCCUPIED">Occupied</option>
+        </select>
+        <input id="pCounty" placeholder="County (optional)" class="border rounded-lg px-3 py-2 text-sm" />
+        <input id="pTown" placeholder="Town (optional)" class="border rounded-lg px-3 py-2 text-sm" />
+        <input id="pEstate" placeholder="Estate / Area (optional)" class="border rounded-lg px-3 py-2 text-sm" />
+
+        <div class="space-y-2">
+          <button type="button" onclick="captureLocation('new')" class="w-full border rounded-lg px-3 py-2 text-base font-semibold text-blue-800">Use my current location</button>
+          <input id="pLat" type="hidden" />
+          <input id="pLng" type="hidden" />
+          <input id="pPinLabel" placeholder="Location landmark (optional)" class="w-full border rounded-lg px-3 py-2 text-base" />
+          <p id="newLocationStatus" class="text-sm text-slate-600">Location is optional. Your browser asks permission only when you tap the button.</p>
+        </div>
+        <input id="pTargetTenants" placeholder="Ideal for (e.g. youth, single mother, children - optional)" class="border rounded-lg px-3 py-2 text-sm" />
+
+        <div class="md:col-span-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-700">Photos (Max 4 — first photo clicked becomes cover)</label>
+            <input id="pPhotoFiles" type="file" accept="image/*" multiple onchange="handleNewPostFiles(event)" class="text-xs" />
+          </div>
+          <div id="newPostPhotoPreviews" class="flex gap-2 flex-wrap"></div>
+        </div>
+
+        <textarea id="pDesc" placeholder="Description (optional)" class="border rounded-lg px-3 py-2 text-sm md:col-span-3" rows="2"></textarea>
+        <button type="submit" class="md:col-span-3 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700">
+          Submit House for Admin Approval
+        </button>
+      </form>
+      </details>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">3. Your property listings</h2>
+      <div class="flex flex-wrap gap-2 items-center">
+        <input id="payPhone" placeholder="M-Pesa phone (07XXXXXXXX)" inputmode="tel" class="border rounded-lg px-3 py-2 text-base" />
+      </div>
+      <p class="text-sm text-slate-600">Choose a plan, renewal, photo or priority upgrade to send a payment prompt to this number. Add-photo fee: <strong><span id="addPhotoFeeLabel">30</span> KES</strong>.</p>
+      <div id="myHousesBox" class="space-y-3"></div>
+    </section>
+
+    <section class="bg-white p-5 rounded-xl border space-y-3">
+      <h2 class="text-lg font-bold">4. Post Plans & Priority Boosts</h2>
+      <div id="plansRow" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+      <div id="myPaymentsBox" class="space-y-2 pt-2"></div>
+    </section>
+  </main>
+
+  <div id="paymentModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <form onsubmit="confirmPayment(event)" class="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+      <div class="flex items-center justify-between">
+        <h2 id="paymentModalTitle" class="text-lg font-bold">Confirm payment</h2>
+        <button type="button" onclick="closePaymentModal()" class="px-2 text-xl font-bold" aria-label="Close">×</button>
+      </div>
+      <p id="paymentModalDescription" class="text-sm text-slate-600"></p>
+      <p id="payStatus" role="status" class="min-h-6 text-sm font-semibold text-emerald-800"></p>
+      <label class="block space-y-1 text-sm font-semibold" for="paymentPhoneInput">
+        M-Pesa phone number
+        <input id="paymentPhoneInput" inputmode="tel" autocomplete="tel" placeholder="07XXXXXXXX" class="w-full rounded-lg border px-3 py-2 text-base" required />
+      </label>
+      <div class="flex gap-2">
+        <button id="paymentCancelBtn" type="button" onclick="closePaymentModal()" class="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold">Cancel</button>
+        <button id="paymentConfirmBtn" type="submit" class="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Send payment prompt</button>
+      </div>
+    </form>
+  </div>
+
+  <footer class="bg-white border-t px-4 py-4 mt-8">
+    <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
+      <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
+      <div class="flex flex-wrap gap-3">
+        <a href="tel:+254756225185" class="font-semibold text-blue-700 underline">Call 0756225185</a>
+        <a href="https://wa.me/254756225185" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0756225185</a>
+        <a href="tel:+254710911645" class="font-semibold text-blue-700 underline">Call 0710911645</a>
+        <a href="https://wa.me/254710911645" target="_blank" rel="noopener noreferrer" class="font-semibold text-green-700 underline">WhatsApp 0710911645</a>
+        <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support (support.stackcrafts.com)</button>
+        <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-800 underline">Powered by Stackcrafts Studio</a>
+      </div>
+    </div>
+  </footer>
+
+  <aside id="cookieNotice" class="hidden fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-3xl rounded-xl border border-slate-300 bg-white p-4 shadow-xl" role="dialog" aria-label="Cookie preferences">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-slate-700">We use a preference cookie to remember your choice. No advertising or analytics cookies are used.</p>
+      <div class="flex shrink-0 gap-2">
+        <button type="button" onclick="saveCookieChoice('accepted')" class="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Accept</button>
+        <button type="button" onclick="saveCookieChoice('rejected')" class="rounded-lg border px-3 py-2 text-sm font-semibold">Reject</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const PROPERTY_TYPES = [
+      'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging',
+    ];
+    const COMPRESS_CONFIG = {
+      maxWidth: 800,
+      maxHeight: 600,
+      quality: 0.62,
+      mimeType: 'image/jpeg',
+    };
+
+    const API_URL = 'https://nyumbabackedd.onrender.com';
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+    let userToken = localStorage.getItem('hh_auth_token') || '';
+    let user = null;
+    localStorage.removeItem('hh_user');
+    let allHouses = [];
+    let searchTimeout = null;
+    let searchController = null;
+    let searchSequence = 0;
+    let reportHouseId = null;
+    let newPostImages = [];
+    let pollInterval = null;
+    let pendingPaymentId = null;
+    let paymentWaiting = false;
+    let paymentIntent = null;
+    let addPhotoPrice = 30;
+    let authMode = 'login';
+    let pendingPayment = null;
+    let activePriorityPlans = [];
+    let activePostPlans = [];
+
+    function propertyTypesFor(house) {
+      try {
+        const parsed = JSON.parse(house.property_types_json || '[]');
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch {
+        // Fall back to the legacy single property type.
+      }
+      return house.property_type ? [house.property_type] : [];
+    }
+
+    function selectedPropertyTypes(selector) {
+      return Array.from(document.querySelectorAll(selector))
+        .filter((input) => input.checked)
+        .map((input) => input.value);
+    }
+
+    function hasCookieChoice() {
+      return document.cookie.split(';').some((item) => item.trim().startsWith('hh_cookie_consent='))
+        || localStorage.getItem('hh_cookie_consent') === 'rejected';
+    }
+
+    window.saveCookieChoice = (choice) => {
+      const notice = document.getElementById('cookieNotice');
+      if (choice === 'accepted') {
+        const secure = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `hh_cookie_consent=accepted; Max-Age=31536000; Path=/; SameSite=Lax${secure}`;
+        localStorage.removeItem('hh_cookie_consent');
+      } else {
+        document.cookie = 'hh_cookie_consent=; Max-Age=0; Path=/; SameSite=Lax';
+        localStorage.setItem('hh_cookie_consent', 'rejected');
+      }
+      notice.classList.add('hidden');
+    };
+
+    async function runWithButtonFeedback(btn, fn, busyLabel = 'Working...', doneLabel = null) {
+      if (!btn) return fn();
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = busyLabel;
+      try {
+        return await fn();
+      } catch (error) {
+        if (!document.getElementById('paymentModal').classList.contains('hidden')) {
+          document.getElementById('payStatus').textContent = error.message || 'The payment request failed. Please try again.';
+        } else if (!document.getElementById('authModal').classList.contains('hidden')) {
+          setAuthNotice(error.message || 'The request failed. Please try again.');
+        } else {
+          banner(error.message || 'The request failed. Please try again.');
+        }
+        return null;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = doneLabel || origText;
+        if (doneLabel) {
+          setTimeout(() => { btn.textContent = origText; }, 1200);
+        }
+      }
+    }
+
+    window.togglePassVisibility = (inputId, btn) => {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      if (btn) btn.textContent = show ? 'Hide' : 'View';
+    };
+
+    function authHeaders(extra = {}) {
+      return {
+        ...extra,
+        ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}),
+      };
+    }
+
+    function banner(msg) {
+      document.getElementById('bannerMsg').textContent = msg;
+      document.getElementById('bannerWrap').classList.remove('hidden');
+    }
+    function setAuthNotice(message, type = 'error') {
+      const notice = document.getElementById('authMessage');
+      notice.textContent = message;
+      notice.className = `rounded-lg border px-3 py-2 text-sm ${type === 'success' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-red-300 bg-red-50 text-red-900'}`;
+    }
+    function clearAuthNotice() {
+      const notice = document.getElementById('authMessage');
+      notice.textContent = '';
+      notice.className = 'hidden rounded-lg border px-3 py-2 text-sm';
+    }
+    window.hideBanner = () => document.getElementById('bannerWrap').classList.add('hidden');
+
+    window.openSupportPage = () => {
+      banner('help us retain system working — opening support.stackcrafts.com');
+      window.open('https://support.stackcrafts.com', '_blank', 'noopener,noreferrer');
+    };
+
+    window.captureLocation = (target, propertyId = '') => {
+      if (!navigator.geolocation) return banner('Location is not available in this browser.');
+      const status = document.getElementById(target === 'new' ? 'newLocationStatus' : `editLocationStatus-${propertyId}`);
+      if (status) status.textContent = 'Waiting for location permission…';
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          if (target === 'new') {
+            document.getElementById('pLat').value = coords.latitude;
+            document.getElementById('pLng').value = coords.longitude;
+            document.getElementById('newLocationStatus').textContent = `Location pinned (${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}).`;
+          } else {
+            const button = document.getElementById(`editLocationButton-${propertyId}`);
+            button.dataset.lat = coords.latitude;
+            button.dataset.lng = coords.longitude;
+            document.getElementById(`editLocationStatus-${propertyId}`).textContent = 'Location pin captured. Save changes to update it.';
+          }
+        },
+        (error) => {
+          const messages = {
+            1: 'Location permission was denied. Allow location access in browser settings to pin this post.',
+            2: 'Your location could not be determined. Try again or move to an area with a better signal.',
+            3: 'Location request timed out. Please try again.',
+          };
+          if (status) status.textContent = messages[error.code] || 'Could not get your location.';
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      );
+    };
+
+    window.openCommentModal = () => {
+      const m = document.getElementById('commentModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+    };
+    window.closeCommentModal = () => {
+      const m = document.getElementById('commentModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    };
+
+    window.submitCommentAlert = async (e) => {
+      e.preventDefault();
+      const btn = e.submitter;
+      await runWithButtonFeedback(btn, async () => {
+        const res = await fetch(`${API_URL}/api/alerts/comment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender_name: document.getElementById('cmtName').value.trim(),
+            sender_email: document.getElementById('cmtEmail').value.trim(),
+            message: document.getElementById('cmtMessage').value.trim(),
+          }),
+        });
+        const data = await res.json();
+        banner(data.message || 'Alert sent');
+        if (data.success) {
+          e.target.reset();
+          closeCommentModal();
+        }
+      }, 'Sending...', 'Sent');
+    };
+
+    function openAuthModal() {
+      const m = document.getElementById('authModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      document.getElementById('authStandardPanel').classList.remove('hidden');
+      document.getElementById('authForgotPanel').classList.add('hidden');
+      document.getElementById('suspendedPanel').classList.add('hidden');
+      document.getElementById('authCloseButton').classList.remove('hidden');
+      document.getElementById('authTitle').textContent = 'Your account';
+      clearAuthNotice();
+      setAuthMode(authMode);
+    }
+    window.openAccountAccess = () => {
+      authMode = 'login';
+      openAuthModal();
+    };
+
+    window.showForgotPassword = () => {
+      const email = document.getElementById('authEmail').value.trim();
+      if (email) document.getElementById('fpEmail').value = email;
+      document.getElementById('authStandardPanel').classList.add('hidden');
+      document.getElementById('authForgotPanel').classList.remove('hidden');
+      document.getElementById('suspendedPanel').classList.add('hidden');
+      document.getElementById('authTitle').textContent = 'Password recovery';
+      clearAuthNotice();
+    };
+
+    window.showAccountLogin = () => {
+      document.getElementById('authForgotPanel').classList.add('hidden');
+      document.getElementById('authStandardPanel').classList.remove('hidden');
+      document.getElementById('authTitle').textContent = 'Your account';
+      clearAuthNotice();
+    };
+
+    function showSuspensionReview(email) {
+      document.getElementById('authStandardPanel').classList.add('hidden');
+      document.getElementById('authForgotPanel').classList.add('hidden');
+      document.getElementById('suspendedPanel').classList.remove('hidden');
+      document.getElementById('authTitle').textContent = 'Account review';
+      document.getElementById('authCloseButton').classList.add('hidden');
+      document.getElementById('suspensionEmail').value = email;
+      document.getElementById('suspensionMessage').value = '';
+      clearAuthNotice();
+    }
+
+    window.setAuthMode = (mode) => {
+      authMode = mode === 'signup' ? 'signup' : 'login';
+      const signup = authMode === 'signup';
+      document.getElementById('authName').classList.toggle('hidden', !signup);
+      document.getElementById('authPhone').classList.toggle('hidden', !signup);
+      document.getElementById('authName').required = signup;
+      document.getElementById('authPhone').required = signup;
+      document.getElementById('authSubmitBtn').textContent = signup ? 'Create account' : 'Log in';
+      document.getElementById('authSubmitBtn').className = `w-full py-2 rounded-lg text-white text-sm font-semibold ${signup ? 'bg-emerald-600' : 'bg-slate-900'}`;
+      document.getElementById('authLoginModeBtn').className = `py-2 rounded-lg text-sm font-semibold ${signup ? 'border' : 'bg-slate-900 text-white'}`;
+      document.getElementById('authSignupModeBtn').className = `py-2 rounded-lg text-sm font-semibold ${signup ? 'bg-emerald-600 text-white' : 'border'}`;
+    };
+    window.closeAuthModal = () => {
+      const m = document.getElementById('authModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    };
+
+    function completeSession(u, token) {
+      user = u;
+      userToken = token;
+      localStorage.setItem('hh_auth_token', userToken);
+      closeAuthModal();
+      refreshNav();
+      showUserPortal();
+    }
+
+    window.handleEmailAuth = async (e) => {
+      e.preventDefault();
+      const btn = e.submitter;
+      const mode = authMode;
+      await runWithButtonFeedback(btn, async () => {
+        const fullName = document.getElementById('authName').value.trim();
+        const phone = document.getElementById('authPhone').value.trim();
+        const email = document.getElementById('authEmail').value.trim();
+        const password = document.getElementById('authPassword').value;
+
+        const endpoint = mode === 'signup' ? '/api/auth/register' : '/api/auth/login';
+        const res = await fetch(`${API_URL}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, full_name: fullName, phone, password }),
+        });
+        const data = await res.json();
+        if (res.status === 403 && data.code === 'ACCOUNT_SUSPENDED') {
+          showSuspensionReview(email);
+          return;
+        }
+        if (!res.ok || !data.success) {
+          setAuthNotice(data.message || 'Authentication error');
+          return;
+        }
+        completeSession(data.data.user, data.data.token);
+      }, mode === 'signup' ? 'Creating...' : 'Logging in...');
+    };
+
+    window.sendSuspensionReview = async (event) => {
+      event.preventDefault();
+      await runWithButtonFeedback(event.submitter, async () => {
+        const res = await fetch(`${API_URL}/api/auth/suspension-review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('suspensionEmail').value,
+            message: document.getElementById('suspensionMessage').value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setAuthNotice(data.message || 'Could not send your review request.');
+          return;
+        }
+        setAuthNotice(data.message, 'success');
+        document.getElementById('suspensionMessage').value = '';
+      }, 'Sending...');
+    };
+
+    window.requestResetCode = async (btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const email = (document.getElementById('fpEmail').value || document.getElementById('authEmail').value).trim();
+        if (!email) return setAuthNotice('Enter your account email first.');
+        document.getElementById('fpEmail').value = email;
+
+        const res = await fetch(`${API_URL}/api/auth/forgot-password/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        setAuthNotice(data.message || 'Reset request processed', res.ok && data.success ? 'success' : 'error');
+        if (res.ok && data.success) {
+          document.getElementById('fpCodeStep').classList.remove('hidden');
+          document.getElementById('fpPasswordStep').classList.add('hidden');
+          document.getElementById('fpCode').focus();
+        }
+      }, 'Sending...');
+    };
+
+    window.verifyResetCode = async (btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const email = document.getElementById('fpEmail').value.trim();
+        const code = document.getElementById('fpCode').value.trim();
+        if (!email || !code) return setAuthNotice('Enter your email and the code sent to it.');
+        const res = await fetch(`${API_URL}/api/auth/forgot-password/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return setAuthNotice(data.message || 'The verification code is invalid.');
+        document.getElementById('fpPasswordStep').classList.remove('hidden');
+        document.getElementById('fpNewPass').focus();
+        setAuthNotice('Code verified. Choose a new password.', 'success');
+      }, 'Verifying...', 'Verified');
+    };
+
+    window.confirmResetWithCode = async (btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const email = document.getElementById('fpEmail').value.trim();
+        const code = document.getElementById('fpCode').value.trim();
+        const new_password = document.getElementById('fpNewPass').value;
+
+        const res = await fetch(`${API_URL}/api/auth/forgot-password/reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code, new_password }),
+        });
+        const data = await res.json();
+        setAuthNotice(data.message || 'Password reset response', res.ok && data.success ? 'success' : 'error');
+        if (res.ok && data.success) {
+          document.getElementById('fpCode').value = '';
+          document.getElementById('fpNewPass').value = '';
+          document.getElementById('fpCodeStep').classList.add('hidden');
+          document.getElementById('fpPasswordStep').classList.add('hidden');
+        }
+      }, 'Updating...', 'Updated');
+    };
+
+    function refreshNav() {
+      const dashBtn = document.getElementById('myDashboardBtn');
+      const outBtn = document.getElementById('signOutBtn');
+      const accountBtn = document.getElementById('accountAccessBtn');
+      if (user && user.id) {
+        accountBtn.classList.add('hidden');
+        dashBtn.classList.remove('hidden');
+        dashBtn.textContent = `My Listings (${user.full_name})`;
+        outBtn.classList.remove('hidden');
+        document.getElementById('accountBadge').textContent = `${user.email}`;
+        document.getElementById('uName').value = user.full_name || '';
+        document.getElementById('uCall').value = user.call_phone || user.phone || '';
+        document.getElementById('uWa').value = user.whatsapp_phone || user.phone || '';
+        document.getElementById('payPhone').value = user.call_phone || user.phone || '';
+      } else {
+        accountBtn.classList.remove('hidden');
+        dashBtn.classList.add('hidden');
+        outBtn.classList.add('hidden');
+      }
+    }
+
+    window.showPublicBrowse = () => {
+      document.getElementById('publicSection').classList.remove('hidden');
+      document.getElementById('userPortal').classList.add('hidden');
+      loadHouses().catch((error) => banner(error.message || 'Could not load houses.'));
+    };
+
+    window.showUserPortal = () => {
+      if (!user || !user.id) return openAuthModal();
+      document.getElementById('publicSection').classList.add('hidden');
+      document.getElementById('userPortal').classList.remove('hidden');
+      loadUserPortal().catch((error) => banner(error.message || 'Could not load your account.'));
+    };
+
+    window.handlePostHouseClick = () => {
+      if (user && user.id) return showUserPortal();
+      openAuthModal();
+    };
+
+    window.handleSignOut = () => {
+      user = null;
+      userToken = '';
+      localStorage.removeItem('hh_auth_token');
+      refreshNav();
+      showPublicBrowse();
+    };
+
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            const ratio = Math.min(COMPRESS_CONFIG.maxWidth / width, COMPRESS_CONFIG.maxHeight / height, 1);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL(COMPRESS_CONFIG.mimeType, COMPRESS_CONFIG.quality));
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleNewPostFiles = async (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const f of files) {
+        if (newPostImages.length >= 4) break;
+        const compressed = await compressImageFile(f);
+        newPostImages.push(compressed);
+      }
+      e.target.value = '';
+      renderNewPostPreviews();
+    };
+
+    window.makeNewCover = (idx) => {
+      if (idx <= 0 || idx >= newPostImages.length) return;
+      const [chosen] = newPostImages.splice(idx, 1);
+      newPostImages.unshift(chosen);
+      renderNewPostPreviews();
+    };
+
+    window.deleteNewPhoto = (idx) => {
+      newPostImages.splice(idx, 1);
+      renderNewPostPreviews();
+    };
+
+    function renderNewPostPreviews() {
+      const box = document.getElementById('newPostPhotoPreviews');
+      box.innerHTML = newPostImages.map((src, i) => `
+        <div class="relative border rounded-lg p-1 bg-slate-50 w-28 space-y-1">
+          <img src="${src}" class="w-full h-20 object-cover rounded cursor-pointer" onclick="makeNewCover(${i})" title="Click to set as main photo" />
+          <div class="flex justify-between items-center text-[10px]">
+            <button type="button" onclick="makeNewCover(${i})" class="font-semibold text-emerald-700">${i === 0 ? 'Cover' : 'Set Main'}</button>
+            <button type="button" onclick="deleteNewPhoto(${i})" class="text-red-600 font-bold">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function formatRentRange(h) {
+      const minR = Number(h.min_rent ?? h.monthly_rent ?? 0);
+      const maxR = Number(h.max_rent ?? h.monthly_rent ?? minR);
+      const period = {
+        DAY: 'day',
+        NIGHT: 'night',
+        MONTH: 'month',
+        YEAR: 'year',
+      }[h.rent_period] || 'month';
+      if (maxR > minR) return `KES ${minR.toLocaleString()} - ${maxR.toLocaleString()} / ${period}`;
+      return `KES ${minR.toLocaleString()} / ${period}`;
+    }
+
+    function daysRemaining(expiresAt) {
+      return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000));
+    }
+
+    function buildGoogleMapsUrl(h) {
+      if (h.pin_lat && h.pin_lng) {
+        return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${h.pin_lat},${h.pin_lng}`)}`;
+      }
+      const query = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query || 'Kenya')}`;
+    }
+
+    window.loadHouses = async (btn) => {
+      const exec = async () => {
+        const params = new URLSearchParams();
+        const q = document.getElementById('qInput').value.trim();
+        const owner_name = document.getElementById('ownerSearchInput').value.trim();
+        const property_type = document.getElementById('typeFilterInput').value;
+        const min_rent = document.getElementById('minRentInput').value.trim();
+        const max_rent = document.getElementById('maxRentInput').value.trim();
+        const sort = document.getElementById('sortInput').value;
+
+        if (q) params.set('q', q);
+        if (owner_name) params.set('owner_name', owner_name);
+        if (property_type) params.set('property_type', property_type);
+        if (min_rent) params.set('min_rent', min_rent);
+        if (max_rent) params.set('max_rent', max_rent);
+        if (sort) params.set('sort', sort);
+
+        if (searchController) searchController.abort();
+        searchController = new AbortController();
+        const requestSequence = ++searchSequence;
+        const container = document.getElementById('housesList');
+        container.setAttribute('aria-busy', 'true');
+        if (!allHouses.length) {
+          container.innerHTML = '<div id="initialListingsMessage" class="col-span-full rounded-xl p-8 text-center shadow-sm"><span class="listing-loader" aria-hidden="true"></span><span>Loading available listings…</span></div>';
+        }
+        const res = await fetch(`${API_URL}/api/properties?${params.toString()}`, { signal: searchController.signal });
+        if (requestSequence !== searchSequence) return;
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Could not load listings.');
+        allHouses = data.data || [];
+        container.setAttribute('aria-busy', 'false');
+
+        if (!allHouses.length) {
+          container.innerHTML = `<div class="col-span-full bg-white p-8 rounded-xl border text-center text-slate-500">No approved houses match your search.</div>`;
+          return;
+        }
+
+        container.innerHTML = allHouses.map((h) => {
+          const waText = encodeURIComponent(`Hello, I saw "${h.title}" on HouseHunter. Is it available?`);
+          return `
+            <article class="bg-white rounded-xl border overflow-hidden shadow-sm flex flex-col justify-between">
+              <div>
+                <img src="${h.cover_image || 'https://placehold.co/600x400?text=House'}" alt="${h.title}" loading="lazy" decoding="async" class="w-full h-44 object-cover" />
+                <div class="p-4 space-y-1">
+                  <span class="text-xs font-semibold uppercase text-emerald-700">${propertyTypesFor(h).join(' · ')}</span>
+                  <h3 class="font-bold text-lg">${h.title}</h3>
+                  <button type="button" data-owner="${h.owner_name}" class="owner-filter-btn text-xs text-blue-700 underline font-medium">
+                    Owner/Agent: ${h.owner_name}
+                  </button>
+                  <p class="text-sm text-slate-600">${[h.estate, h.town, h.county].filter(Boolean).join(', ')}</p>
+                  <p class="font-bold text-emerald-700">${formatRentRange(h)}</p>
+                  <p class="text-sm font-semibold ${h.availability_status === 'OCCUPIED' ? 'text-amber-700' : 'text-emerald-700'}">${h.availability_status === 'OCCUPIED' ? 'Occupied' : 'Available'}</p>
+                </div>
+              </div>
+              <div class="p-4 pt-0 space-y-2">
+                <div class="flex gap-2">
+                  <a href="tel:+${h.contact_phone}" class="flex-1 text-center py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">Call</a>
+                  <a href="https://wa.me/${h.contact_whatsapp}?text=${waText}" target="_blank" rel="noreferrer" class="flex-1 text-center py-2 rounded-lg bg-green-600 text-white text-sm font-medium">WhatsApp</a>
+                </div>
+                <div class="flex gap-2">
+                  <a href="${buildGoogleMapsUrl(h)}" target="_blank" rel="noreferrer" class="flex-1 text-center py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
+                    Location Pin
+                  </a>
+                  <button type="button" data-id="${h.id}" class="view-house-btn flex-1 py-1.5 rounded-lg border text-xs font-medium">
+                    View Photos & More
+                  </button>
+                </div>
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        document.querySelectorAll('.owner-filter-btn').forEach((b) => {
+          b.addEventListener('click', () => {
+            document.getElementById('ownerSearchInput').value = b.dataset.owner;
+            loadHouses();
+          });
+        });
+
+        document.querySelectorAll('.view-house-btn').forEach((b) => {
+          b.addEventListener('click', () => {
+            const found = allHouses.find((x) => x.id === b.dataset.id);
+            if (found) openModal(found);
+          });
+        });
+      };
+      if (btn) return runWithButtonFeedback(btn, exec, 'Searching...', 'Searched');
+      return exec().catch((error) => {
+        if (error.name === 'AbortError') return null;
+        const container = document.getElementById('housesList');
+        container.setAttribute('aria-busy', 'false');
+        if (!allHouses.length) {
+          container.innerHTML = `<div class="col-span-full rounded-xl border border-amber-300 bg-amber-50 p-8 text-center text-amber-900 shadow-sm">
+            <p class="font-semibold">${error.message || 'Could not load listings.'}</p>
+            <button type="button" onclick="loadHouses()" class="mt-3 rounded-lg border border-amber-400 bg-white px-4 py-2 text-sm font-semibold">Try again</button>
+          </div>`;
+        }
+        banner(error.message || 'Could not load houses.');
+        return null;
+      });
+    };
+
+    function scheduleHouseSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => loadHouses(), 300);
+    }
+
+    ['qInput', 'ownerSearchInput', 'minRentInput', 'maxRentInput'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', scheduleHouseSearch);
+    });
+    ['typeFilterInput', 'sortInput'].forEach((id) => {
+      document.getElementById(id).addEventListener('change', scheduleHouseSearch);
+    });
+
+    async function openModal(h) {
+      reportHouseId = h.id;
+      document.getElementById('modalTitle').textContent = h.title;
+      document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
+      document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
+      document.getElementById('modalRent').textContent = formatRentRange(h);
+      document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
+      document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
+      document.getElementById('modalCall').href = `tel:+${h.contact_phone}`;
+      document.getElementById('modalWa').href = `https://wa.me/${h.contact_whatsapp}`;
+
+      const requestedHouseId = h.id;
+      const m = document.getElementById('houseModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      document.getElementById('modalDesc').textContent = 'Loading listing details…';
+      document.getElementById('modalTargetTenants').textContent = '';
+      document.getElementById('modalMainImg').src = h.cover_image || 'https://placehold.co/600x400?text=House';
+      document.getElementById('modalThumbBar').textContent = '';
+
+      try {
+        const res = await fetch(`${API_URL}/api/properties/${encodeURIComponent(requestedHouseId)}`);
+        const response = await res.json();
+        if (!res.ok || !response.success) throw new Error(response.message || 'Could not load listing details.');
+        if (reportHouseId !== requestedHouseId) return;
+        h = response.data;
+      } catch (error) {
+        if (reportHouseId === requestedHouseId) {
+          banner(error.message || 'Could not load listing details.');
+          window.closeHouseModal();
+        }
+        return;
+      }
+
+      const imgs = JSON.parse(h.images_json || '[]');
+      document.getElementById('modalTitle').textContent = h.title;
+      document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
+      document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
+      document.getElementById('modalRent').textContent = formatRentRange(h);
+      document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
+      document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
+      document.getElementById('modalDesc').textContent = h.description || '';
+      document.getElementById('modalTargetTenants').textContent = h.target_tenants_desc ? `Suitable for: ${h.target_tenants_desc}` : '';
+      document.getElementById('modalCall').href = `tel:+${h.contact_phone}`;
+      document.getElementById('modalWa').href = `https://wa.me/${h.contact_whatsapp}`;
+
+      const renderGallery = (activeIdx) => {
+        const chosen = imgs[activeIdx] || imgs[0] || 'https://placehold.co/600x400?text=No+Photo';
+        document.getElementById('modalMainImg').src = chosen;
+        document.getElementById('modalThumbBar').innerHTML = imgs.slice(1).map((src, idx) => `
+          <button type="button" class="px-2.5 py-1 rounded border text-xs font-semibold bg-slate-50" data-idx="${idx + 1}">
+            View Photo ${idx + 2}
+          </button>
+        `).join('');
+        document.querySelectorAll('#modalThumbBar button').forEach((b) => {
+          b.addEventListener('click', () => renderGallery(Number(b.dataset.idx)));
+        });
+      };
+      renderGallery(0);
+    }
+
+    window.closeHouseModal = () => {
+      const m = document.getElementById('houseModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    };
+
+    window.sendReport = async (btn) => {
+      if (!reportHouseId) return;
+      await runWithButtonFeedback(btn, async () => {
+        const res = await fetch(`${API_URL}/api/properties/${reportHouseId}/report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reason: document.getElementById('reportReason').value,
+            details: document.getElementById('reportNote').value.trim(),
+          }),
+        });
+        const data = await res.json();
+        banner(data.message);
+        document.getElementById('reportNote').value = '';
+        closeHouseModal();
+      }, 'Reporting...', 'Reported');
+    };
+
+    window.savePhones = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const res = await fetch(`${API_URL}/api/user/contact-profile`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            full_name: document.getElementById('uName').value.trim(),
+            call_phone: document.getElementById('uCall').value.trim(),
+            whatsapp_phone: document.getElementById('uWa').value.trim(),
+          }),
+        });
+        const data = await res.json();
+        banner(data.message);
+        if (data.success) {
+          user = data.data;
+          refreshNav();
+        }
+      }, 'Saving...', 'Saved');
+    };
+
+    window.createHouse = async (e) => {
+      e.preventDefault();
+      await runWithButtonFeedback(e.submitter, async () => {
+        const propertyTypes = selectedPropertyTypes('input[name="pPropertyType"]');
+        if (!propertyTypes.length) {
+          banner('Select at least one type available in this building.');
+          return;
+        }
+        const res = await fetch(`${API_URL}/api/properties`, {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            title: document.getElementById('pTitle').value.trim(),
+            property_type: propertyTypes[0],
+            property_types: propertyTypes,
+            min_rent: Number(document.getElementById('pMinRent').value || 0),
+            max_rent: Number(document.getElementById('pMaxRent').value || document.getElementById('pMinRent').value || 0),
+            rent_period: document.getElementById('pRentPeriod').value,
+            availability_status: document.getElementById('pAvailability').value,
+            county: document.getElementById('pCounty').value.trim(),
+            town: document.getElementById('pTown').value.trim(),
+            estate: document.getElementById('pEstate').value.trim(),
+            pin_lat: document.getElementById('pLat').value.trim(),
+            pin_lng: document.getElementById('pLng').value.trim(),
+            pin_label: document.getElementById('pPinLabel').value.trim(),
+            target_tenants_desc: document.getElementById('pTargetTenants').value.trim(),
+            description: document.getElementById('pDesc').value.trim(),
+            images: newPostImages.slice(0, 4),
+          }),
+        });
+        const data = await res.json();
+        banner(data.message);
+        if (data.success) {
+          e.target.reset();
+          newPostImages = [];
+          renderNewPostPreviews();
+          loadUserPortal();
+        }
+      }, 'Submitting...', 'Submitted');
+    };
+
+    window.saveEditedHouse = async (id, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const keptImgs = Array.from(document.querySelectorAll(`.edit-kept-img[data-prop="${id}"]`)).map((el) => el.dataset.src);
+        if (!keptImgs.length) return banner('A listing must keep at least one photo.');
+        const propertyTypes = selectedPropertyTypes(`input[name="editPropertyType-${id}"]`);
+        if (!propertyTypes.length) return banner('Select at least one type available in this building.');
+        const pinButton = document.getElementById(`editLocationButton-${id}`);
+        const res = await fetch(`${API_URL}/api/user/properties/${id}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            title: document.getElementById(`edit-title-${id}`).value.trim(),
+            property_type: propertyTypes[0],
+            property_types: propertyTypes,
+            min_rent: Number(document.getElementById(`edit-min-${id}`).value || 0),
+            max_rent: Number(document.getElementById(`edit-max-${id}`).value || 0),
+            rent_period: document.getElementById(`edit-period-${id}`).value,
+            county: document.getElementById(`edit-county-${id}`).value.trim(),
+            town: document.getElementById(`edit-town-${id}`).value.trim(),
+            estate: document.getElementById(`edit-estate-${id}`).value.trim(),
+            pin_lat: pinButton.dataset.lat || pinButton.dataset.savedLat || '',
+            pin_lng: pinButton.dataset.lng || pinButton.dataset.savedLng || '',
+            pin_label: document.getElementById(`edit-pinlabel-${id}`).value.trim(),
+            target_tenants_desc: document.getElementById(`edit-tenants-${id}`).value.trim(),
+            description: document.getElementById(`edit-desc-${id}`).value.trim(),
+            kept_images: keptImgs,
+          }),
+        });
+        const data = await res.json();
+        banner(data.message || (data.success ? 'Property updated.' : 'Could not update property.'));
+        if (!res.ok || !data.success) return;
+        await loadUserPortal();
+        await loadHouses();
+      }, 'Saving...', 'Saved');
+    };
+
+    window.removeExistingPhoto = async (id, photoSrc, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const currentImages = Array.from(document.querySelectorAll(`.edit-kept-img[data-prop="${id}"]`))
+          .map((el) => el.dataset.src);
+        if (currentImages.length <= 1) return banner('Keep at least one photo on every listing.');
+        const imgs = currentImages.filter((src) => src !== photoSrc);
+        if (imgs.length === currentImages.length) return banner('This photo is no longer in the listing. Refresh and try again.');
+        const res = await fetch(`${API_URL}/api/user/properties/${id}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ kept_images: imgs }),
+        });
+        const data = await res.json();
+        banner(data.message || (data.success ? 'Photo deleted.' : 'Could not delete photo.'));
+        if (!res.ok || !data.success) return;
+        await loadUserPortal();
+      }, 'Deleting...', 'Deleted');
+    };
+
+    window.payAddPhotoToHouse = async (id, fileInput) => {
+      const file = fileInput.files?.[0];
+      if (!file) return banner('Choose a photo first');
+      const compressed = await compressImageFile(file);
+      fileInput.value = '';
+      pay('ADD_PHOTO', null, null, id, compressed);
+    };
+
+    async function loadUserPortal() {
+      try {
+        return await loadUserPortalData();
+      } catch (error) {
+        banner(error.message || 'Could not load your account.');
+        return null;
+      }
+    }
+
+    async function loadUserPortalData() {
+      const pRes = await fetch(`${API_URL}/api/plans`);
+      const pData = await pRes.json();
+      const cfg = pData.data?.config || {};
+      activePostPlans = pData.data?.plans || [];
+      activePriorityPlans = pData.data?.priorityPlans || [];
+      addPhotoPrice = Number(cfg.add_photo_price || 30);
+      document.getElementById('addPhotoFeeLabel').textContent = addPhotoPrice;
+      document.getElementById('quotaNote').innerHTML =
+        `Free first post: <strong>${cfg.free_posts_allowed || 1}</strong> (${cfg.free_post_duration_days || 14} days). Max 4 photos per post. Adding a photo to an existing post costs <strong>${addPhotoPrice} KES</strong>.`;
+
+      document.getElementById('plansRow').innerHTML = activePostPlans.map((pl) => `
+        <div class="border rounded-lg p-3 space-y-2">
+          <div class="font-bold">${pl.name} — ${pl.currency} ${Number(pl.price).toLocaleString()}</div>
+          <div class="text-sm text-slate-600">${pl.posts_allowed} posts • ${pl.duration_days} days</div>
+          <button type="button" onclick="pay('POST_PLAN', '${pl.id}', null, null, null, this, 'Purchase a post plan')" class="w-full py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold">Buy plan</button>
+        </div>
+      `).join('');
+
+      const dRes = await fetch(`${API_URL}/api/user/dashboard`, { headers: authHeaders() });
+      const dData = await dRes.json();
+      if (!dData.success) {
+        banner(dData.message || 'Could not load your account.');
+        return;
+      }
+
+      user = dData.data.user;
+      refreshNav();
+
+      const props = dData.data.properties || [];
+      window._userProps = props;
+
+      document.getElementById('myHousesBox').innerHTML = props.map((h) => {
+        const imgs = JSON.parse(h.images_json || '[]');
+        const remainingDays = daysRemaining(h.expires_at);
+        const listingStatus = remainingDays === 0 ? 'EXPIRED' : h.availability_status;
+        return `
+          <details class="border rounded-xl bg-slate-50">
+            <summary class="cursor-pointer p-4">
+              <span class="block text-base font-bold">${h.title} (${formatRentRange(h)})</span>
+              <span class="mt-1 block text-sm text-slate-600">Approval: <strong>${h.approval_status}</strong> · Status: <strong>${listingStatus}</strong> · ${remainingDays} days remaining</span>
+            </summary>
+            <div class="space-y-4 border-t p-4">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <div class="text-sm text-slate-500">Owner tools · Status: <strong>${listingStatus}</strong></div>
+              </div>
+              <div class="flex gap-1.5 flex-wrap">
+                <button type="button" onclick="setHouseStatus('${h.id}', 'OCCUPIED', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Occupied</button>
+                <button type="button" onclick="setHouseStatus('${h.id}', 'AVAILABLE', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Available</button>
+                <button type="button" onclick="setHouseStatus('${h.id}', 'PAUSED', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Pause</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <input id="edit-title-${h.id}" value="${h.title.replace(/"/g, '&quot;')}" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
+              <fieldset class="space-y-2 rounded border bg-white p-2 md:col-span-3">
+                <legend class="px-1 text-xs font-semibold">Types available in this building</legend>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  ${PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="editPropertyType-${h.id}" value="${type}" ${propertyTypesFor(h).includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}
+                </div>
+              </fieldset>
+              <div class="flex gap-1.5">
+                <input id="edit-min-${h.id}" type="number" value="${h.min_rent ?? h.monthly_rent ?? 0}" placeholder="Min Rent" class="w-1/2 border rounded px-2 py-1.5 text-xs bg-white" />
+                <input id="edit-max-${h.id}" type="number" value="${h.max_rent ?? h.monthly_rent ?? 0}" placeholder="Max Rent" class="w-1/2 border rounded px-2 py-1.5 text-xs bg-white" />
+              </div>
+              <select id="edit-period-${h.id}" class="border rounded px-2.5 py-1.5 text-base bg-white">
+                <option value="DAY" ${h.rent_period === 'DAY' ? 'selected' : ''}>Per day</option>
+                <option value="NIGHT" ${h.rent_period === 'NIGHT' ? 'selected' : ''}>Per night</option>
+                <option value="MONTH" ${(h.rent_period || 'MONTH') === 'MONTH' ? 'selected' : ''}>Per month</option>
+                <option value="YEAR" ${h.rent_period === 'YEAR' ? 'selected' : ''}>Per year</option>
+              </select>
+              <input id="edit-county-${h.id}" value="${h.county || ''}" placeholder="County" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
+              <input id="edit-town-${h.id}" value="${h.town || ''}" placeholder="Town" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
+              <input id="edit-estate-${h.id}" value="${h.estate || ''}" placeholder="Estate" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
+              <button type="button" id="editLocationButton-${h.id}" data-saved-lat="${h.pin_lat ?? ''}" data-saved-lng="${h.pin_lng ?? ''}" data-lat="${h.pin_lat ?? ''}" data-lng="${h.pin_lng ?? ''}" onclick="captureLocation('edit', '${h.id}')" class="border rounded px-2.5 py-1.5 text-sm bg-white">Update location pin</button>
+              <input id="edit-pinlabel-${h.id}" value="${h.pin_label || ''}" placeholder="Pin Label" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
+              <span id="editLocationStatus-${h.id}" class="text-sm text-slate-600">${h.pin_lat ? 'A location pin is saved.' : 'No location pin saved.'}</span>
+              <input id="edit-tenants-${h.id}" value="${h.target_tenants_desc || ''}" placeholder="Suitable for (youth, single mother, etc.)" class="border rounded px-2.5 py-1.5 text-xs bg-white md:col-span-3" />
+              <textarea id="edit-desc-${h.id}" rows="2" placeholder="Description" class="border rounded px-2.5 py-1.5 text-xs bg-white md:col-span-3">${h.description || ''}</textarea>
+            </div>
+
+            <div class="flex gap-2 flex-wrap items-center">
+              ${imgs.map((src) => `
+                <div class="edit-kept-img border rounded p-1 bg-white w-24 space-y-1" data-prop="${h.id}" data-src="${src}">
+                  <img src="${src}" class="w-full h-16 object-cover rounded" />
+                  <button type="button" onclick="removeExistingPhoto('${h.id}', this.parentElement.dataset.src, this)" class="w-full text-sm text-red-600 font-bold" ${imgs.length <= 1 ? 'disabled title="Keep at least one photo"' : ''}>Delete Photo</button>
+                </div>
+              `).join('')}
+              ${imgs.length < 4 ? `
+                <label class="border border-dashed rounded p-2 bg-white text-xs cursor-pointer">
+                  <span class="font-semibold text-emerald-700">+ Add Photo (${addPhotoPrice} KES)</span>
+                  <input type="file" accept="image/*" class="hidden" onchange="payAddPhotoToHouse('${h.id}', this)" />
+                </label>
+              ` : `<span class="text-xs text-slate-500">Max 4 photos reached</span>`}
+            </div>
+
+            <button type="button" onclick="saveEditedHouse('${h.id}', this)" class="px-4 py-1.5 rounded bg-emerald-600 text-white text-xs font-semibold">
+              Save Changes
+            </button>
+            <div class="border-t pt-3">
+              <h3 class="mb-2 text-base font-semibold">Renew listing</h3>
+              <div class="flex flex-wrap gap-2">${activePostPlans.map((plan) => `<button type="button" onclick="pay('POST_PLAN', '${plan.id}', null, '${h.id}', null, this, 'Renew this listing')" class="rounded bg-slate-800 px-3 py-2 text-sm font-semibold text-white">${plan.name} · KES ${Number(plan.price).toLocaleString()} · ${plan.duration_days} days</button>`).join('') || '<span class="text-sm text-slate-500">No renewal plans are available.</span>'}</div>
+            </div>
+            <div class="border-t pt-3">
+              <h3 class="mb-2 text-base font-semibold">Prioritize listing</h3>
+              <div class="flex flex-wrap gap-2">${activePriorityPlans.map((plan) => `<button type="button" onclick="pay('PRIORITY_PROMOTION', null, '${plan.id}', '${h.id}', null, this, 'Prioritize this listing')" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">${plan.name} · KES ${Number(plan.price).toLocaleString()} · ${plan.duration_days} days</button>`).join('') || '<span class="text-sm text-slate-500">No priority plans are available.</span>'}</div>
+            </div>
+          </div>
+          </details>
+        `;
+      }).join('') || `<div class="text-sm text-slate-500">No houses posted yet.</div>`;
+
+      document.getElementById('myPaymentsBox').innerHTML = (dData.data.payments || []).map((pay) => `
+        <div class="border rounded-lg p-2.5 text-xs flex justify-between">
+          <span>${pay.purpose} — KES ${Number(pay.amount).toLocaleString()} (${pay.phone_number})</span>
+          <span class="font-semibold">${pay.status}</span>
+        </div>
+      `).join('');
+    }
+
+    window.setHouseStatus = async (id, availability_status, btn) => {
+      await runWithButtonFeedback(btn, async () => {
+        const res = await fetch(`${API_URL}/api/user/properties/${id}/availability`, {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ availability_status }),
+        });
+        const data = await res.json();
+        banner(data.message);
+        loadUserPortal();
+        loadHouses();
+      }, 'Updating...', 'Updated');
+    };
+
+    window.pay = async (purpose, plan_id, priority_plan_id, property_id, new_photo, btn, description = '') => {
+      paymentIntent = { purpose, plan_id, priority_plan_id, property_id, new_photo };
+      document.getElementById('paymentModalTitle').textContent = 'Confirm payment';
+      document.getElementById('paymentModalDescription').textContent = description || 'A payment prompt will be sent to the phone number below.';
+      document.getElementById('paymentPhoneInput').value = document.getElementById('payPhone').value.trim() || user?.call_phone || user?.phone || '';
+      document.getElementById('payStatus').textContent = '';
+      pendingPaymentId = null;
+      document.getElementById('paymentConfirmBtn').disabled = false;
+      document.getElementById('paymentCancelBtn').disabled = false;
+      document.getElementById('paymentConfirmBtn').textContent = 'Send payment prompt';
+      document.getElementById('paymentConfirmBtn').type = 'submit';
+      document.getElementById('paymentConfirmBtn').removeAttribute('onclick');
+      paymentWaiting = false;
+      const modal = document.getElementById('paymentModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closePaymentModal = () => {
+      if (paymentWaiting) return;
+      const modal = document.getElementById('paymentModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      paymentIntent = null;
+    };
+
+    window.confirmPayment = async (event) => {
+      event.preventDefault();
+      if (!paymentIntent) return banner('Choose an item to pay for first.');
+      const phone = document.getElementById('paymentPhoneInput').value.trim();
+      if (!/^(?:\+?254|0)?[17]\d{8}$/.test(phone.replace(/[\s-]/g, ''))) {
+        document.getElementById('paymentModalDescription').textContent = 'Enter a valid Kenyan mobile number.';
+        return;
+      }
+      const intent = paymentIntent;
+      const status = document.getElementById('payStatus');
+      const modal = document.getElementById('paymentModal');
+      await runWithButtonFeedback(document.getElementById('paymentConfirmBtn'), async () => {
+        status.textContent = 'Sending payment prompt…';
+        let res;
+        try {
+          res = await fetch(`${API_URL}/api/payments/initiate`, {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ ...intent, phone_number: phone }),
+          });
+        } catch {
+          document.getElementById('paymentModalDescription').textContent = `Could not connect to ${API_URL}. Check the connection and try again.`;
+          return;
+        }
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.data?.payment_id) {
+          status.textContent = data.message || 'Could not start payment.';
+          return;
+        }
+        document.getElementById('payPhone').value = phone;
+        paymentIntent = null;
+        pendingPaymentId = data.data.payment_id;
+        paymentWaiting = true;
+        status.textContent = 'Payment prompt sent. Check your phone and enter your M-Pesa PIN. This window will stay open until the payment status is confirmed.';
+
+        let tries = 0;
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(async () => {
+          tries += 1;
+          try {
+            const verifyResponse = await fetch(`${API_URL}/api/payments/${data.data.payment_id}/verify`, { headers: authHeaders() });
+            const verifyData = await verifyResponse.json();
+            if (verifyData.data?.status === 'SUCCESSFUL') {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              paymentWaiting = false;
+              pendingPaymentId = null;
+              status.textContent = 'Payment successful. Your changes are saved.';
+              document.getElementById('paymentCancelBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').type = 'button';
+              document.getElementById('paymentConfirmBtn').textContent = 'Done';
+              document.getElementById('paymentConfirmBtn').onclick = closePaymentModal;
+              await loadUserPortal();
+              await loadHouses();
+            } else if (['FAILED', 'CANCELLED'].includes(verifyData.data?.status)) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              paymentWaiting = false;
+              pendingPaymentId = null;
+              status.textContent = verifyData.message || 'Payment failed or was cancelled. No changes were saved.';
+              document.getElementById('paymentCancelBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').type = 'button';
+              document.getElementById('paymentConfirmBtn').textContent = 'Close';
+              document.getElementById('paymentConfirmBtn').onclick = closePaymentModal;
+            } else if (tries >= 50) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              paymentWaiting = false;
+              status.textContent = 'Payment is still unconfirmed. No changes have been applied; check payment history before retrying.';
+              document.getElementById('paymentCancelBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').type = 'button';
+              document.getElementById('paymentConfirmBtn').textContent = 'Check status again';
+              document.getElementById('paymentConfirmBtn').onclick = checkPaymentStatus;
+            }
+          } catch {
+            status.textContent = 'Payment status check interrupted. Retrying…';
+            if (tries >= 50) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+              paymentWaiting = false;
+              document.getElementById('paymentCancelBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').disabled = false;
+              document.getElementById('paymentConfirmBtn').type = 'button';
+              document.getElementById('paymentConfirmBtn').textContent = 'Check status again';
+              document.getElementById('paymentConfirmBtn').onclick = checkPaymentStatus;
+              status.textContent = 'Payment status could not be confirmed. No changes have been applied. Check payment history before retrying.';
+            }
+          }
+        }, 3000);
+      }, 'Sending prompt…');
+      if (paymentWaiting) {
+        document.getElementById('paymentConfirmBtn').disabled = true;
+        document.getElementById('paymentConfirmBtn').textContent = 'Waiting for payment…';
+        document.getElementById('paymentCancelBtn').disabled = true;
+      }
+    };
+
+    window.checkPaymentStatus = async () => {
+      if (!pendingPaymentId) return;
+      const button = document.getElementById('paymentConfirmBtn');
+      const cancelButton = document.getElementById('paymentCancelBtn');
+      const status = document.getElementById('payStatus');
+      paymentWaiting = true;
+      button.disabled = true;
+      cancelButton.disabled = true;
+      button.textContent = 'Checking…';
+      try {
+        const response = await fetch(`${API_URL}/api/payments/${pendingPaymentId}/verify`, { headers: authHeaders() });
+        const data = await response.json();
+        if (data.data?.status === 'SUCCESSFUL') {
+          pendingPaymentId = null;
+          status.textContent = 'Payment successful. Your changes are saved.';
+          await loadUserPortal();
+          await loadHouses();
+        } else if (['FAILED', 'CANCELLED'].includes(data.data?.status)) {
+          pendingPaymentId = null;
+          status.textContent = `${data.message || 'Payment failed or was cancelled.'} No changes were saved.`;
+        } else {
+          status.textContent = 'Payment is still pending. No changes have been applied.';
+        }
+        if (!pendingPaymentId) {
+          button.type = 'button';
+          button.textContent = 'Close';
+          button.onclick = closePaymentModal;
+        } else {
+          button.textContent = 'Check status again';
+        }
+      } catch {
+        status.textContent = 'Could not check the payment status. Please retry.';
+        button.textContent = 'Check status again';
+      } finally {
+        paymentWaiting = false;
+        cancelButton.disabled = false;
+        button.disabled = false;
+      }
+    };
+
+    async function restoreSession() {
+      if (!userToken) {
+        user = null;
+        refreshNav();
+        return;
+      }
+      try {
+        const res = await fetch(`${API_URL}/api/auth/session`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (res.status === 401 || res.status === 403) {
+            userToken = '';
+            user = null;
+            localStorage.removeItem('hh_auth_token');
+          }
+          if (data.code === 'ACCOUNT_SUSPENDED') {
+            openAuthModal();
+            showSuspensionReview(data.email || '');
+          }
+          return;
+        }
+        user = data.data.user;
+      } catch {
+        banner('Could not reconnect to your account. Check your connection and try again.');
+      }
+      refreshNav();
+    }
+
+    refreshNav();
+    if (!hasCookieChoice()) document.getElementById('cookieNotice').classList.remove('hidden');
+    loadHouses();
+    restoreSession();
+  </script>
+</body>
+</html>
