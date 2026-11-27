@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -160,7 +161,7 @@
   <!-- PUBLIC BROWSE VIEW -->
   <main id="publicSection" class="max-w-6xl w-full mx-auto p-4 space-y-6 flex-1">
     <section class="bg-white p-4 rounded-xl border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-      <input id="qInput" placeholder="Town, estate, county, title..." class="border rounded-lg px-3 py-2 text-sm" />
+      <input id="qInput" placeholder="Building name, town, estate, county..." class="border rounded-lg px-3 py-2 text-sm" />
       <input id="ownerSearchInput" placeholder="Owner / Agent name..." class="border rounded-lg px-3 py-2 text-sm" />
       <select id="typeFilterInput" class="border rounded-lg px-3 py-2 text-base">
         <option value="">All Property Types</option>
@@ -173,6 +174,7 @@
         <option value="Apartment">Apartment</option>
         <option value="House">House</option>
         <option value="Lodging">Lodging</option>
+        <option value="Cottage">Cottage</option>
       </select>
       <input id="minRentInput" type="number" placeholder="Min Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
       <input id="maxRentInput" type="number" placeholder="Max Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
@@ -288,12 +290,10 @@
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Apartment" /> Apartment</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="House" /> House</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Lodging" /> Lodging</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Cottage" /> Cottage</label>
           </div>
         </fieldset>
-        <div class="flex gap-2">
-          <input id="pMinRent" type="number" placeholder="Min Rent (KES)" class="w-1/2 border rounded-lg px-3 py-2 text-sm" />
-          <input id="pMaxRent" type="number" placeholder="Max Rent (KES)" class="w-1/2 border rounded-lg px-3 py-2 text-sm" />
-        </div>
+        <input id="pRent" type="number" min="1" step="1" placeholder="Price (KES)" class="border rounded-lg px-3 py-2 text-sm" required />
         <select id="pRentPeriod" class="border rounded-lg px-3 py-2 text-base" aria-label="Rent charging period">
           <option value="MONTH">Rent per month</option>
           <option value="NIGHT">Rent per night</option>
@@ -326,7 +326,7 @@
         </div>
 
         <textarea id="pDesc" placeholder="Description (optional)" class="border rounded-lg px-3 py-2 text-sm md:col-span-3" rows="2"></textarea>
-        <button type="submit" class="md:col-span-3 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700">
+        <button id="createHouseSubmitBtn" type="submit" class="md:col-span-3 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700">
           Submit House for Admin Approval
         </button>
       </form>
@@ -398,6 +398,8 @@
     <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
       <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
       <div id="footerContact" class="flex flex-wrap gap-3">
+        <a href="faq.html" class="font-semibold text-slate-800 underline">FAQs</a>
+        <a href="terms.html" class="font-semibold text-slate-800 underline">Terms & Conditions</a>
         <button type="button" id="footerContactBtn" onclick="openContactModal()" class="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50">Contact us</button>
         <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support system grow</button>
         <a href="https://support.stackcrafts.com" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-white hover:bg-amber-600">Buy tea ☕ for us today</a>
@@ -419,7 +421,7 @@
   <script>
     const PROPERTY_TYPES = [
       'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
-      '3 Bedroom', 'Apartment', 'House', 'Lodging',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage',
     ];
     const COMPRESS_CONFIG = {
       maxWidth: 800,
@@ -911,16 +913,14 @@
       `).join('');
     }
 
-    function formatRentRange(h) {
+    function formatRentLabel(h) {
       const minR = Number(h.min_rent ?? h.monthly_rent ?? 0);
-      const maxR = Number(h.max_rent ?? h.monthly_rent ?? minR);
       const period = {
         DAY: 'day',
         NIGHT: 'night',
         MONTH: 'month',
         YEAR: 'year',
       }[h.rent_period] || 'month';
-      if (maxR > minR) return `KES ${minR.toLocaleString()} - ${maxR.toLocaleString()} / ${period}`;
       return `KES ${minR.toLocaleString()} / ${period}`;
     }
 
@@ -984,7 +984,7 @@
                     Owner/Agent: ${h.owner_name}
                   </button>
                   <p class="text-sm text-slate-600">${[h.estate, h.town, h.county].filter(Boolean).join(', ')}</p>
-                  <p class="font-bold text-emerald-700">${formatRentRange(h)}</p>
+                  <p class="font-bold text-emerald-700">${formatRentLabel(h)}</p>
                   <p class="text-sm font-semibold ${h.availability_status === 'OCCUPIED' ? 'text-amber-700' : 'text-emerald-700'}">${h.availability_status === 'OCCUPIED' ? 'Occupied' : 'Available'}</p>
                 </div>
               </div>
@@ -1053,7 +1053,7 @@
       document.getElementById('modalTitle').textContent = h.title;
       document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
       document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
-      document.getElementById('modalRent').textContent = formatRentRange(h);
+      document.getElementById('modalRent').textContent = formatRentLabel(h);
       document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
       document.getElementById('modalCall').href = `tel:+${h.contact_phone}`;
@@ -1085,7 +1085,7 @@
       document.getElementById('modalTitle').textContent = h.title;
       document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
       document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
-      document.getElementById('modalRent').textContent = formatRentRange(h);
+      document.getElementById('modalRent').textContent = formatRentLabel(h);
       document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
       document.getElementById('modalDesc').textContent = h.description || '';
@@ -1154,12 +1154,20 @@
 
     window.createHouse = async (e) => {
       e.preventDefault();
-      await runWithButtonFeedback(e.submitter, async () => {
+      const button = e.submitter || e.target.querySelector('button[type="submit"]');
+      const originalLabel = button.textContent;
+      const showSubmitResult = (message, isError = false) => {
+        button.textContent = message;
+        button.classList.toggle('bg-red-600', isError);
+        button.classList.toggle('bg-emerald-600', !isError);
+      };
+      button.disabled = true;
+      button.textContent = 'Submitting...';
+      try {
         const propertyTypes = selectedPropertyTypes('input[name="pPropertyType"]');
-        if (!propertyTypes.length) {
-          banner('Select at least one type available in this building.');
-          return;
-        }
+        if (!propertyTypes.length) throw new Error('Select at least one type available in this building.');
+        const price = Number(document.getElementById('pRent').value);
+        if (!Number.isFinite(price) || price <= 0) throw new Error('Enter a valid listing price.');
         const res = await fetch(`${API_URL}/api/properties`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -1167,8 +1175,8 @@
             title: document.getElementById('pTitle').value.trim(),
             property_type: propertyTypes[0],
             property_types: propertyTypes,
-            min_rent: Number(document.getElementById('pMinRent').value || 0),
-            max_rent: Number(document.getElementById('pMaxRent').value || document.getElementById('pMinRent').value || 0),
+            min_rent: price,
+            max_rent: price,
             rent_period: document.getElementById('pRentPeriod').value,
             availability_status: document.getElementById('pAvailability').value,
             county: document.getElementById('pCounty').value.trim(),
@@ -1183,14 +1191,20 @@
           }),
         });
         const data = await res.json();
-        banner(data.message);
-        if (data.success) {
-          e.target.reset();
-          newPostImages = [];
-          renderNewPostPreviews();
-          loadUserPortal();
-        }
-      }, 'Submitting...', 'Submitted');
+        if (!res.ok || !data.success) throw new Error(data.message || 'Could not submit listing.');
+        banner(data.message || 'Listing submitted successfully.');
+        e.target.reset();
+        newPostImages = [];
+        renderNewPostPreviews();
+        showSubmitResult('Success: submitted');
+        loadUserPortal().catch((error) => banner(error.message || 'Could not refresh your listings.'));
+      } catch (error) {
+        showSubmitResult(`Error: ${error.message || 'Could not submit listing.'}`, true);
+        banner(error.message || 'Could not submit listing.');
+      } finally {
+        button.disabled = false;
+        if (button.textContent === 'Submitting...') button.textContent = originalLabel;
+      }
     };
 
     window.saveEditedHouse = async (id, btn) => {
@@ -1207,8 +1221,8 @@
             title: document.getElementById(`edit-title-${id}`).value.trim(),
             property_type: propertyTypes[0],
             property_types: propertyTypes,
-            min_rent: Number(document.getElementById(`edit-min-${id}`).value || 0),
-            max_rent: Number(document.getElementById(`edit-max-${id}`).value || 0),
+            min_rent: Number(document.getElementById(`edit-rent-${id}`).value || 0),
+            max_rent: Number(document.getElementById(`edit-rent-${id}`).value || 0),
             rent_period: document.getElementById(`edit-period-${id}`).value,
             county: document.getElementById(`edit-county-${id}`).value.trim(),
             town: document.getElementById(`edit-town-${id}`).value.trim(),
@@ -1317,6 +1331,22 @@
       refreshNav();
 
       const props = dData.data.properties || [];
+      const activeComplimentaryPosts = (dData.data.subscriptions || []).filter((subscription) =>
+        subscription.source_type === 'FREE_FIRST_POST'
+        && subscription.status === 'ACTIVE'
+        && Date.parse(subscription.expires_at) > Date.now()
+        && Number(subscription.posts_used) < Number(subscription.posts_total));
+      const complimentaryPostsRemaining = activeComplimentaryPosts.reduce(
+        (total, subscription) => total + Number(subscription.posts_total) - Number(subscription.posts_used),
+        0,
+      );
+      if (complimentaryPostsRemaining) {
+        const nextExpiry = activeComplimentaryPosts
+          .map((subscription) => Date.parse(subscription.expires_at))
+          .sort((a, b) => a - b)[0];
+        document.getElementById('quotaNote').innerHTML +=
+          ` Complimentary posts available: <strong>${complimentaryPostsRemaining}</strong>; next expiry: <strong>${new Date(nextExpiry).toLocaleDateString()}</strong>.`;
+      }
       window._userProps = props;
 
       document.getElementById('myHousesBox').innerHTML = props.map((h) => {
@@ -1326,7 +1356,7 @@
         return `
           <details class="border rounded-xl bg-slate-50">
             <summary class="cursor-pointer p-4">
-              <span class="block text-base font-bold">${h.title} (${formatRentRange(h)})</span>
+              <span class="block text-base font-bold">${h.title} (${formatRentLabel(h)})</span>
               <span class="mt-1 block text-sm text-slate-600">Approval: <strong>${h.approval_status}</strong> · Status: <strong>${listingStatus}</strong> · ${remainingDays} days remaining</span>
             </summary>
             <div class="space-y-4 border-t p-4">
@@ -1349,10 +1379,7 @@
                   ${PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="editPropertyType-${h.id}" value="${type}" ${propertyTypesFor(h).includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}
                 </div>
               </fieldset>
-              <div class="flex gap-1.5">
-                <input id="edit-min-${h.id}" type="number" value="${h.min_rent ?? h.monthly_rent ?? 0}" placeholder="Min Rent" class="w-1/2 border rounded px-2 py-1.5 text-xs bg-white" />
-                <input id="edit-max-${h.id}" type="number" value="${h.max_rent ?? h.monthly_rent ?? 0}" placeholder="Max Rent" class="w-1/2 border rounded px-2 py-1.5 text-xs bg-white" />
-              </div>
+              <input id="edit-rent-${h.id}" type="number" min="1" step="1" value="${h.min_rent ?? h.monthly_rent ?? 0}" placeholder="Price (KES)" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
               <select id="edit-period-${h.id}" class="border rounded px-2.5 py-1.5 text-base bg-white">
                 <option value="DAY" ${h.rent_period === 'DAY' ? 'selected' : ''}>Per day</option>
                 <option value="NIGHT" ${h.rent_period === 'NIGHT' ? 'selected' : ''}>Per night</option>
