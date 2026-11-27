@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Replace with the deployed API origin when publishing this frontend. -->
   <meta name="api-base" content="http://localhost:4000" />
-  <title>KejaSasa — Houses & Homes</title>
+  <title>Lodora Houses and Homes</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .text-xs { font-size: .875rem; line-height: 1.25rem; }
@@ -45,10 +45,25 @@
     @media (max-width: 640px) {
       body > header { padding: .5rem .65rem; }
       body > header .max-w-6xl { flex-wrap: nowrap; gap: .5rem; }
-      body > header .max-w-6xl > div:last-child { flex-wrap: nowrap; gap: .35rem; overflow-x: auto; }
-      body > header .max-w-6xl > div:last-child > :nth-child(n+5):not(#signOutBtn) { display: none; }
-      body > header .max-w-6xl > div:last-child > button,
-      body > header .max-w-6xl > div:last-child > a { flex-shrink: 0; padding: .35rem .5rem; font-size: .75rem; }
+      body > header .max-w-6xl { position: relative; }
+      #mainNav { display: none; }
+      #mainNav.mobile-open {
+        display: flex;
+        position: absolute;
+        top: calc(100% + .55rem);
+        right: 0;
+        z-index: 30;
+        width: min(20rem, calc(100vw - 1.25rem));
+        flex-direction: column;
+        align-items: stretch;
+        gap: .4rem;
+        border: 1px solid #cbd5e1;
+        border-radius: .75rem;
+        background: white;
+        padding: .75rem;
+        box-shadow: 0 12px 30px rgb(15 23 42 / .18);
+      }
+      #mainNav > * { width: 100%; text-align: left; }
       #publicSection { padding: .5rem; gap: .65rem; }
       #publicSection > section:first-child { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4rem; padding: .5rem; }
       #qInput, #advancedFilters { grid-column: 1 / -1; }
@@ -68,8 +83,9 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
   <header class="sticky top-0 z-20 bg-white border-b px-4 py-3">
     <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      <button type="button" onclick="showPublicBrowse()" class="text-xl font-bold text-emerald-700">KejaSasa</button>
-      <div class="flex items-center gap-2 flex-wrap">
+      <button type="button" onclick="showPublicBrowse()" class="text-xl font-bold text-emerald-700">Lodora Houses and Homes</button>
+      <button type="button" id="mobileNavToggle" onclick="toggleMobileNav()" aria-label="Open menu" aria-expanded="false" class="rounded-lg border px-3 py-2 text-xl leading-none md:hidden">☰</button>
+      <div id="mainNav" class="flex items-center gap-2 flex-wrap md:flex">
         <button type="button" onclick="showPublicBrowse()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Browse Houses & Homes
         </button>
@@ -81,13 +97,16 @@
           My Listings
         </button>
         <button type="button" onclick="openSupportPage()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
-          Support system grow
+          Support Lodora
         </button>
         <a href="https://support.stackcrafts.com" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">Buy tea ☕ for us today</a>
         <button type="button" onclick="openCommentModal()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
           Comments
         </button>
         <button type="button" id="headerContactBtn" onclick="openContactModal()" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Contact us</button>
+        <button type="button" onclick="openReferralModal()" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Refer someone</button>
+        <a href="faq.html" class="rounded-lg border px-3 py-1.5 text-sm font-medium">FAQs</a>
+        <a href="terms.html" class="rounded-lg border px-3 py-1.5 text-sm font-medium">Terms</a>
         <button type="button" id="signOutBtn" onclick="handleSignOut()" class="hidden px-3 py-1.5 rounded-lg text-sm text-red-600 border border-red-200 hover:bg-red-50">
           Sign Out
         </button>
@@ -183,7 +202,7 @@
   <main id="publicSection" class="max-w-6xl w-full mx-auto p-4 space-y-6 flex-1">
     <section class="rounded-xl border bg-white p-4">
       <h1 class="text-xl font-bold text-slate-900">Free house and home advertisements, and homes to rent</h1>
-      <p class="mt-1 text-sm text-slate-600">KejaSasa helps owners advertise houses and homes and helps people find a place to live.</p>
+      <p class="mt-1 text-sm text-slate-600">Lodora helps owners advertise houses and homes and helps people find a place to live.</p>
     </section>
     <section class="bg-white p-4 rounded-xl border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
       <input id="qInput" placeholder="Building name, town, estate, county..." class="border rounded-lg px-3 py-2 text-sm" />
@@ -200,6 +219,7 @@
         <option value="Lodging">Lodging</option>
         <option value="Cottage">Cottage</option>
         <option value="Restaurant">Restaurant</option>
+        <option value="Students Hostel">Students Hostel</option>
       </select>
       <details id="advancedFilters" class="col-span-full">
         <summary class="cursor-pointer text-sm font-semibold text-emerald-800">More filters and sorting</summary>
@@ -237,7 +257,7 @@
       <p id="modalRent" class="font-bold text-lg"></p>
       <p id="modalLoc" class="text-sm text-slate-600"></p>
       <div class="flex flex-wrap gap-2">
-        <a id="modalMapPinBtn" href="#" target="_blank" rel="noreferrer" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold">
+        <a id="modalMapPinBtn" href="#" target="_blank" rel="noreferrer" onclick="trackListingActivity(reportHouseId, 'LOCATION_PIN')" class="hidden px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold">
           Open Location Pin on Google Maps
         </a>
       </div>
@@ -247,7 +267,7 @@
       <div class="flex gap-2">
         <a id="modalCall" href="#" class="hidden flex-1 text-center py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm">Call</a>
         <a id="modalWa" href="#" target="_blank" rel="noreferrer" class="hidden flex-1 text-center py-2.5 rounded-lg bg-green-600 text-white font-semibold text-sm">WhatsApp</a>
-        <button id="modalUnlockContact" type="button" onclick="unlockListingContact(reportHouseId, this)" class="hidden flex-1 rounded-lg bg-amber-500 py-2.5 text-sm font-semibold text-slate-950">Unlock contact</button>
+        <button id="modalUnlockContact" type="button" onclick="unlockListingContact(reportHouseId, this)" class="hidden flex-1 rounded-lg bg-amber-500 py-2.5 text-sm font-semibold text-slate-950">Unlock contact & exact location</button>
       </div>
 
       <div class="border-t pt-3 space-y-2">
@@ -365,7 +385,7 @@
       <div class="flex flex-wrap gap-2 items-center">
         <input id="payPhone" placeholder="M-Pesa phone (07XXXXXXXX)" inputmode="tel" class="border rounded-lg px-3 py-2 text-base" />
       </div>
-      <p class="text-sm text-slate-600">Listings are free. Add-photo fee: <strong><span id="addPhotoFeeLabel">30</span> KES</strong>. Payments to unlock contacts go to the KejaSasa system, not the landlord or house owner.</p>
+      <p class="text-sm text-slate-600">Listings are free. Add-photo fee: <strong><span id="addPhotoFeeLabel">30</span> KES</strong>. Payments to unlock contacts go to Lodora, not the landlord or house owner.</p>
       <div id="myHousesBox" class="space-y-3"></div>
     </section>
 
@@ -420,15 +440,33 @@
     </form>
   </div>
 
+  <div id="referralModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="referralTitle">
+    <section class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl">
+      <div class="flex items-center justify-between">
+        <h2 id="referralTitle" class="text-lg font-bold">Share Lodora with someone</h2>
+        <button type="button" onclick="closeReferralModal()" class="px-2 text-xl font-bold" aria-label="Close">×</button>
+      </div>
+      <p class="text-sm text-slate-600">These Lodora links are ready to share through WhatsApp, SMS, or anywhere you choose.</p>
+      <p id="referralMessage" class="break-words rounded-lg border bg-slate-50 p-3 text-sm"></p>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <a id="referralWhatsApp" href="#" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-green-700 px-3 py-2 text-center text-sm font-semibold text-white">Share on WhatsApp</a>
+        <a id="referralSms" href="#" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white">Share by SMS</a>
+        <button type="button" onclick="copyReferralLinks()" class="rounded-lg border px-3 py-2 text-sm font-semibold">Copy links</button>
+      </div>
+    </section>
+  </div>
+
   <footer class="bg-white border-t px-4 py-4 mt-8">
-    <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
-      <span>© <span id="currentYear"></span> KejaSasa. Free house and home advertisements, plus homes to rent.</span>
+    <div class="max-w-6xl mx-auto space-y-4 text-sm text-slate-600">
       <div id="footerContact" class="flex flex-wrap gap-3">
         <a href="faq.html" class="font-semibold text-slate-800 underline">FAQs</a>
         <a href="terms.html" class="font-semibold text-slate-800 underline">Terms & Conditions</a>
         <button type="button" id="footerContactBtn" onclick="openContactModal()" class="rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-50">Contact us</button>
-        <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support system grow</button>
+        <button type="button" onclick="openSupportPage()" class="font-semibold text-emerald-700 underline">Support Lodora</button>
         <a href="https://support.stackcrafts.com" target="_blank" rel="noopener noreferrer" class="rounded-lg bg-amber-500 px-3 py-1.5 font-semibold text-white hover:bg-amber-600">Buy tea ☕ for us today</a>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+        <span>© <span id="currentYear"></span> Lodora Houses and Homes. All rights reserved.</span>
         <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-slate-800 underline">Powered by Stackcrafts Studio</a>
       </div>
     </div>
@@ -447,7 +485,7 @@
   <script>
     const PROPERTY_TYPES = [
       'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
-      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage', 'Restaurant',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage', 'Restaurant', 'Students Hostel',
     ];
     const COMPRESS_CONFIG = {
       maxWidth: 800,
@@ -660,6 +698,11 @@
     function banner(msg) {
       document.getElementById('bannerMsg').textContent = msg;
       document.getElementById('bannerWrap').classList.remove('hidden');
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      })[character]);
     }
     function setAuthNotice(message, type = 'error') {
       const notice = document.getElementById('authMessage');
@@ -1083,6 +1126,56 @@
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query || 'Kenya')}`;
     }
 
+    window.toggleMobileNav = () => {
+      const nav = document.getElementById('mainNav');
+      const button = document.getElementById('mobileNavToggle');
+      const open = nav.classList.toggle('mobile-open');
+      button.setAttribute('aria-expanded', String(open));
+      button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      button.textContent = open ? '✕' : '☰';
+    };
+
+    window.openReferralModal = () => {
+      const links = [
+        'https://house.stackcrafta.com/',
+        'https://rent.stackcrafts.com/',
+        'https://main.xyz/',
+      ];
+      const text = `Find your next home with Lodora Houses and Homes: ${links.join(' | ')}`;
+      document.getElementById('referralMessage').textContent = text;
+      document.getElementById('referralWhatsApp').href = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      document.getElementById('referralSms').href = `sms:?body=${encodeURIComponent(text)}`;
+      const modal = document.getElementById('referralModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeReferralModal = () => {
+      const modal = document.getElementById('referralModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.copyReferralLinks = async () => {
+      try {
+        await navigator.clipboard.writeText(document.getElementById('referralMessage').textContent);
+        banner('Referral links copied. Share them wherever you like.');
+      } catch (error) {
+        console.error('Could not copy referral links:', error);
+        banner('Clipboard access is unavailable here. Select and copy the referral links shown above.');
+      }
+    };
+
+    window.trackListingActivity = (propertyId, activityType) => {
+      const headers = authHeaders({ 'Content-Type': 'application/json' });
+      fetch(`${API_URL}/api/properties/${encodeURIComponent(propertyId)}/activity`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ activity_type: activityType }),
+        keepalive: true,
+      }).catch((error) => console.warn('Listing activity could not be recorded.', error));
+    };
+
     window.loadHouses = async (btn) => {
       const exec = async () => {
         const params = new URLSearchParams();
@@ -1119,15 +1212,18 @@
         }
 
         container.innerHTML = allHouses.map((h) => {
-          const waText = encodeURIComponent(`Hello, I saw "${h.title}" on KejaSasa. Is it available?`);
+          const waText = encodeURIComponent(`Hello, I saw "${h.title}" on Lodora. Is it available?`);
           const typeRates = rentDetailsFor(h);
           const contacts = unlockedContacts[h.id] || h;
           const hasContact = Boolean(contacts.contact_phone && contacts.contact_whatsapp);
+          const sponsored = h.priority_expires_at && new Date(h.priority_expires_at).getTime() > Date.now();
+          const locationUnlocked = Boolean(contacts.contact_phone || contacts.pin_lat && contacts.pin_lng) || !h.contact_locked;
           return `
             <article class="bg-white rounded-xl border overflow-hidden shadow-sm flex flex-col justify-between">
               <div>
                 <img src="${h.cover_image || 'https://placehold.co/600x400?text=House'}" alt="${h.title}" loading="lazy" decoding="async" class="w-full h-44 object-cover" />
                 <div class="p-4 space-y-1">
+                  ${sponsored ? `<span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase text-amber-900">Sponsored · ${escapeHtml(h.priority_label || 'Priority')}</span>` : ''}
                   <span class="text-xs font-semibold uppercase text-emerald-700">${propertyTypesFor(h).join(' · ')}</span>
                   <h3 class="font-bold text-lg">${h.title}</h3>
                   <button type="button" data-owner="${h.owner_name}" class="owner-filter-btn text-xs text-blue-700 underline font-medium">
@@ -1141,16 +1237,16 @@
               </div>
               <div class="p-4 pt-0 space-y-2">
                 <div class="flex gap-2">
-                  ${hasContact ? `<a href="tel:+${contacts.contact_phone}" class="flex-1 text-center py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">Call</a>
-                  <a href="https://wa.me/${contacts.contact_whatsapp}?text=${waText}" target="_blank" rel="noreferrer" class="flex-1 text-center py-2 rounded-lg bg-green-600 text-white text-sm font-medium">WhatsApp</a>` : `
-                  <button type="button" onclick="unlockListingContact('${h.id}', this)" class="w-full rounded-lg bg-amber-500 py-2 text-sm font-semibold text-slate-950">
-                    Unlock contact · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}
+                  ${hasContact ? `<a href="tel:+${contacts.contact_phone}" onclick="trackListingActivity('${h.id}', 'CALL')" class="flex-1 text-center py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">Call</a>
+                  <a href="https://wa.me/${contacts.contact_whatsapp}?text=${waText}" onclick="trackListingActivity('${h.id}', 'WHATSAPP')" target="_blank" rel="noreferrer" class="flex-1 text-center py-2 rounded-lg bg-green-600 text-white text-sm font-medium">WhatsApp</a>` : `
+                  <button type="button" onclick="unlockListingContact('${h.id}', this, 'CONTACT_UNLOCK')" class="w-full rounded-lg bg-amber-500 py-2 text-sm font-semibold text-slate-950">
+                    Unlock contact & exact location · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}
                   </button>`}
                 </div>
                 <div class="flex gap-2">
-                  <a href="${buildGoogleMapsUrl(h)}" target="_blank" rel="noreferrer" class="flex-1 text-center py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
-                    Location Pin
-                  </a>
+                  ${locationUnlocked
+                    ? `<a href="${buildGoogleMapsUrl(contacts)}" onclick="trackListingActivity('${h.id}', 'LOCATION_PIN')" target="_blank" rel="noreferrer" class="flex-1 text-center py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">Location Pin</a>`
+                    : `<button type="button" onclick="unlockListingContact('${h.id}', this, 'LOCATION_PIN')" class="flex-1 rounded-lg bg-blue-50 py-1.5 text-xs font-semibold text-blue-800">Unlock exact location · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}</button>`}
                   <button type="button" data-id="${h.id}" class="view-house-btn flex-1 py-1.5 rounded-lg border text-xs font-medium">
                     View Photos & More
                   </button>
@@ -1208,13 +1304,18 @@
       const callLink = document.getElementById('modalCall');
       const whatsappLink = document.getElementById('modalWa');
       const unlockButton = document.getElementById('modalUnlockContact');
+      const locationButton = document.getElementById('modalMapPinBtn');
       callLink.classList.toggle('hidden', !hasContact);
       whatsappLink.classList.toggle('hidden', !hasContact);
       unlockButton.classList.toggle('hidden', hasContact || !h.contact_locked);
-      unlockButton.textContent = `Unlock contact · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}`;
+      unlockButton.textContent = `Unlock contact & exact location · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}`;
+      locationButton.classList.toggle('hidden', Boolean(h.contact_locked));
+      locationButton.href = buildGoogleMapsUrl(contacts);
       if (hasContact) {
         callLink.href = `tel:+${contacts.contact_phone}`;
         whatsappLink.href = `https://wa.me/${contacts.contact_whatsapp}`;
+        callLink.setAttribute('onclick', `trackListingActivity('${h.id}', 'CALL')`);
+        whatsappLink.setAttribute('onclick', `trackListingActivity('${h.id}', 'WHATSAPP')`);
       }
     }
 
@@ -1537,18 +1638,22 @@
       const props = dData.data.properties || [];
       const postsUsed = Number(user.free_post_used || 0);
       document.getElementById('quotaNote').innerHTML =
-        `<strong>${Math.max(0, freePostsAllowed - postsUsed)}</strong> of <strong>${freePostsAllowed}</strong> free listing posts remaining for this account. Listings stay visible; contacts are free for ${freeContactDays} days, then unlock for a KejaSasa system fee. Three photos are included per new post; the fourth costs <strong>${addPhotoPrice} KES</strong>.`;
+        `<strong>${Math.max(0, freePostsAllowed - postsUsed)}</strong> of <strong>${freePostsAllowed}</strong> free listing posts remaining for this account. Listings stay visible; contacts are free for ${freeContactDays} days, then unlock for a Lodora system fee. Three photos are included per new post; the fourth costs <strong>${addPhotoPrice} KES</strong>.`;
       window._userProps = props;
 
       document.getElementById('myHousesBox').innerHTML = props.map((h) => {
         const imgs = JSON.parse(h.images_json || '[]');
         const remainingDays = daysRemaining(h.expires_at);
+        const priorityDays = h.priority_expires_at && new Date(h.priority_expires_at).getTime() > Date.now()
+          ? daysRemaining(h.priority_expires_at)
+          : 0;
         const listingStatus = h.availability_status;
         const contactStatus = h.contact_hidden || remainingDays === 0 ? 'CONTACTS LOCKED' : 'CONTACTS FREE';
         return `
           <details class="border rounded-xl bg-slate-50">
             <summary class="cursor-pointer p-4">
               <span class="block text-base font-bold">${h.title} (${formatRentLabel(h)})</span>
+              ${priorityDays ? `<span class="mt-1 inline-block rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase text-amber-900">Sponsored · ${h.priority_label || 'Priority'} · ${priorityDays} day(s) remaining</span>` : ''}
               <span class="mt-1 block text-sm text-slate-600">Approval: <strong>${h.approval_status}</strong> · Listing: <strong>${listingStatus}</strong> · <strong>${contactStatus}</strong> · ${remainingDays} free contact days remaining</span>
             </summary>
             <div class="space-y-4 border-t p-4">
@@ -1609,6 +1714,7 @@
             </button>
             <div class="border-t pt-3">
               <h3 class="mb-2 text-base font-semibold">Prioritize listing</h3>
+              <p class="mb-2 text-xs text-slate-600">${priorityDays ? `Sponsored priority expires in ${priorityDays} day(s).` : 'Choose a plan to mark this listing as sponsored.'}</p>
               <div class="flex flex-wrap gap-2">${activePriorityPlans.map((plan) => `<button type="button" onclick="pay('PRIORITY_PROMOTION', null, '${plan.id}', '${h.id}', null, this, 'Prioritize this listing')" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">${plan.name} · KES ${Number(plan.price).toLocaleString()} · ${plan.duration_days} days</button>`).join('') || '<span class="text-sm text-slate-500">No priority plans are available.</span>'}</div>
             </div>
           </div>
@@ -1644,12 +1750,8 @@
       }, 'Updating...', 'Updated');
     };
 
-    window.unlockListingContact = async (propertyId, btn) => {
-      if (!userToken) {
-        banner('Please sign in or create a free account to unlock this contact.');
-        openAccountAccess();
-        return;
-      }
+    window.unlockListingContact = async (propertyId, btn, activityType = 'CONTACT_UNLOCK') => {
+      trackListingActivity(propertyId, activityType);
       await runWithButtonFeedback(btn, async () => {
         const response = await fetch(`${API_URL}/api/properties/${encodeURIComponent(propertyId)}/contact`, {
           headers: authHeaders(),
@@ -1663,25 +1765,31 @@
             propertyId,
             null,
             btn,
-            `To unlock this contact, please pay KES ${Number(data.amount).toLocaleString()} to the KejaSasa system. This small payment goes to KejaSasa, not the landlord or house owner.`,
+            `To unlock the contact and exact location, please pay KES ${Number(data.amount).toLocaleString()} to Lodora. It is a system fee, not a payment to the landlord or house owner. Enter the phone number that should receive the payment prompt.`,
+            { guest_payment: !userToken },
           );
           return;
         }
         if (!response.ok || !data.success) throw new Error(data.message || 'Could not load this contact.');
-        unlockedContacts[propertyId] = data.data;
+        const detailResponse = await fetch(`${API_URL}/api/properties/${encodeURIComponent(propertyId)}`, {
+          headers: authHeaders(),
+        });
+        const detailData = await detailResponse.json();
+        if (!detailResponse.ok || !detailData.success) {
+          throw new Error(detailData.message || 'Contact is unlocked, but listing details could not be refreshed.');
+        }
+        unlockedContacts[propertyId] = detailData.data;
         const listing = allHouses.find((house) => house.id === propertyId);
         if (listing) {
-          listing.contact_locked = false;
-          listing.contact_phone = data.data.contact_phone;
-          listing.contact_whatsapp = data.data.contact_whatsapp;
+          Object.assign(listing, detailData.data, { contact_locked: false });
         }
         renderModalContact({ ...(listing || {}), id: propertyId, contact_locked: false });
         await loadHouses();
       }, 'Checking contact...', 'Contact ready');
     };
 
-    window.pay = async (purpose, plan_id, priority_plan_id, property_id, new_photo, btn, description = '') => {
-      paymentIntent = { purpose, plan_id, priority_plan_id, property_id, new_photo };
+    window.pay = async (purpose, plan_id, priority_plan_id, property_id, new_photo, btn, description = '', options = {}) => {
+      paymentIntent = { purpose, plan_id, priority_plan_id, property_id, new_photo, ...options };
       document.getElementById('paymentModalTitle').textContent = 'Confirm payment';
       document.getElementById('paymentModalDescription').textContent = description || 'A payment prompt will be sent to the phone number below.';
       document.getElementById('paymentPhoneInput').value = document.getElementById('payPhone').value.trim() || user?.call_phone || user?.phone || '';
@@ -1706,21 +1814,27 @@
       paymentIntent = null;
     };
 
-    async function completeVerifiedPayment(intent) {
+    async function completeVerifiedPayment(intent, paymentId) {
       if (intent?.purpose === 'CONTACT_UNLOCK') {
-        const response = await fetch(`${API_URL}/api/properties/${encodeURIComponent(intent.property_id)}/contact`, {
-          headers: authHeaders(),
-        });
+        const detailUrl = new URL(`${API_URL}/api/properties/${encodeURIComponent(intent.property_id)}`);
+        if (intent.guest_payment) detailUrl.searchParams.set('unlock_token', paymentId);
+        const response = await fetch(detailUrl, { headers: authHeaders() });
         const data = await response.json();
         if (!response.ok || !data.success) {
-          throw new Error(data.message || 'Payment was confirmed, but the contact could not be loaded.');
+          throw new Error(data.message || 'Payment was confirmed, but the contact and location could not be loaded.');
         }
         unlockedContacts[intent.property_id] = data.data;
         const listing = allHouses.find((house) => house.id === intent.property_id);
         if (listing) {
           listing.contact_phone = data.data.contact_phone;
           listing.contact_whatsapp = data.data.contact_whatsapp;
+          listing.pin_lat = data.data.pin_lat;
+          listing.pin_lng = data.data.pin_lng;
+          listing.contact_locked = false;
         }
+        document.getElementById('modalLoc').textContent =
+          [data.data.pin_label, data.data.estate, data.data.town, data.data.county].filter(Boolean).join(', ');
+        renderModalContact({ ...data.data, id: intent.property_id, contact_locked: false });
         await loadHouses();
         return;
       }
@@ -1743,10 +1857,16 @@
         status.textContent = 'Sending payment prompt…';
         let res;
         try {
-          res = await fetch(`${API_URL}/api/payments/initiate`, {
+          const paymentEndpoint = intent.guest_payment
+            ? `${API_URL}/api/guest/contact-payments`
+            : `${API_URL}/api/payments/initiate`;
+          const paymentPayload = intent.guest_payment
+            ? { property_id: intent.property_id, phone_number: phone }
+            : { ...intent, phone_number: phone };
+          res = await fetch(paymentEndpoint, {
             method: 'POST',
             headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ ...intent, phone_number: phone }),
+            body: JSON.stringify(paymentPayload),
           });
         } catch {
           document.getElementById('paymentModalDescription').textContent = `Could not connect to ${API_URL}. Check the connection and try again.`;
@@ -1769,7 +1889,10 @@
         pollInterval = setInterval(async () => {
           tries += 1;
           try {
-            const verifyResponse = await fetch(`${API_URL}/api/payments/${data.data.payment_id}/verify`, { headers: authHeaders() });
+            const verifyPath = intent.guest_payment
+              ? `/api/guest/contact-payments/${data.data.payment_id}/verify`
+              : `/api/payments/${data.data.payment_id}/verify`;
+            const verifyResponse = await fetch(`${API_URL}${verifyPath}`, { headers: authHeaders() });
             const verifyData = await verifyResponse.json();
             if (verifyData.data?.status === 'SUCCESSFUL') {
               clearInterval(pollInterval);
@@ -1784,9 +1907,9 @@
               document.getElementById('paymentConfirmBtn').textContent = 'Done';
               document.getElementById('paymentConfirmBtn').onclick = closePaymentModal;
               try {
-                await completeVerifiedPayment(intent);
+                await completeVerifiedPayment(intent, data.data.payment_id);
                 status.textContent = intent.purpose === 'CONTACT_UNLOCK'
-                  ? 'Payment successful. The contact is now unlocked.'
+                  ? 'Payment successful. The contact and exact location are now unlocked.'
                   : 'Payment successful. Your changes are saved.';
               } catch (error) {
                 status.textContent = error.message || 'Payment succeeded, but the update could not be loaded.';
