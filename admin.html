@@ -344,7 +344,7 @@
             <div class="text-slate-500">Call: ${u.call_phone || '-'} • WA: ${u.whatsapp_phone || '-'}</div>
           </div>
           <div class="flex shrink-0 gap-1.5">
-            <button type="button" onclick="giftUserPost('${u.id}', this)" class="px-2.5 py-1 rounded border border-emerald-400 font-semibold text-emerald-800">Gift one post</button>
+            <button type="button" onclick="giftUserPost('${u.id}', this)" class="px-2.5 py-1 rounded border border-emerald-400 font-semibold text-emerald-800">Gift posts</button>
             <button type="button" onclick="toggleUserSuspend('${u.id}', ${u.is_suspended ? 0 : 1}, this)" class="px-2.5 py-1 rounded border font-semibold">
               ${u.is_suspended ? 'Activate' : 'Suspend'}
             </button>
@@ -373,10 +373,16 @@
         const photos = JSON.parse(p.images_json || '[]');
         let propertyTypes = [];
         let amenities = [];
+        let typePricing = {};
         try {
           propertyTypes = JSON.parse(p.property_types_json || '[]');
         } catch {
           propertyTypes = [];
+        }
+        try {
+          typePricing = JSON.parse(p.type_pricing_json || '{}');
+        } catch {
+          typePricing = {};
         }
         try {
           amenities = JSON.parse(p.amenities_json || '[]');
@@ -385,35 +391,64 @@
         }
         if (!Array.isArray(propertyTypes) || !propertyTypes.length) propertyTypes = [p.property_type];
         if (!Array.isArray(amenities)) amenities = [];
+        if (!typePricing || typeof typePricing !== 'object' || Array.isArray(typePricing)) typePricing = {};
         const expired = new Date(p.expires_at).getTime() <= Date.now();
+        const pricingRows = ADMIN_PROPERTY_TYPES.map((type) => {
+          const rate = typePricing[type] || {};
+          const period = rate.rent_period || p.rent_period || 'MONTH';
+          const days = Number(rate.rent_period_days || 1);
+          const price = Number(rate.price ?? p.min_rent ?? p.monthly_rent ?? 0);
+          const selected = propertyTypes.includes(type);
+          return `<div data-admin-rent-row="${type}" class="grid grid-cols-2 gap-2 rounded border bg-white p-2 ${selected ? '' : 'hidden'}">
+            <strong class="col-span-2 text-xs">${type}</strong>
+            <input data-admin-rent-price="${type}" type="number" min="1" step="1" value="${price || ''}" placeholder="Price (KES)" aria-label="${type} price" class="min-w-0 rounded border px-2 py-1.5" ${selected ? 'required' : ''} />
+            <select data-admin-rent-period="${type}" onchange="toggleAdminRentDays(this)" aria-label="${type} charging period" class="min-w-0 rounded border px-2 py-1.5">
+              <option value="NIGHT" ${period === 'NIGHT' ? 'selected' : ''}>Per night</option>
+              <option value="DAY" ${period === 'DAY' ? 'selected' : ''}>Per day(s)</option>
+              <option value="MONTH" ${period === 'MONTH' ? 'selected' : ''}>Per month</option>
+              <option value="YEAR" ${period === 'YEAR' ? 'selected' : ''}>Per year</option>
+            </select>
+            <label data-admin-rent-days-row class="col-span-2 flex items-center gap-2 text-xs ${selected && period === 'DAY' ? '' : 'hidden'}">
+              Price covers every
+              <input data-admin-rent-days="${type}" type="number" min="1" max="365" value="${days}" class="w-20 rounded border px-2 py-1" />
+              day(s)
+            </label>
+          </div>`;
+        }).join('');
+        const priceSummary = propertyTypes.map((type) => {
+          const rate = typePricing[type] || {};
+          const period = rate.rent_period || p.rent_period || 'MONTH';
+          const days = Number(rate.rent_period_days || 1);
+          const periodLabel = period === 'DAY'
+            ? (days > 1 ? `every ${days} days` : 'per day')
+            : `per ${({ NIGHT: 'night', MONTH: 'month', YEAR: 'year' }[period] || 'month')}`;
+          return `${type}: KES ${Number(rate.price ?? p.min_rent ?? p.monthly_rent ?? 0).toLocaleString()} ${periodLabel}`;
+        }).join(' · ');
         return `
         <details class="border rounded-lg p-3 text-sm">
           <summary class="cursor-pointer">
-            <strong>${escapeHtml(p.title)}</strong> (${escapeHtml(displayPropertyTypes(p))}) — KES ${Number(p.min_rent || p.monthly_rent || 0).toLocaleString()} / ${(p.rent_period || 'MONTH').toLowerCase()}
+            <strong>${escapeHtml(p.title)}</strong> (${escapeHtml(displayPropertyTypes(p))}) — ${escapeHtml(priceSummary)}
             <span class="block text-slate-600">Owner: ${p.owner_name} · ${[p.town, p.county].filter(Boolean).join(', ')} · ${p.approval_status} / ${expired ? 'EXPIRED' : p.availability_status}</span>
           </summary>
           <div class="mt-3 space-y-2">
             <p><strong>Owner contact:</strong> ${p.contact_phone || '-'} · ${p.contact_whatsapp || '-'}</p>
             <p><strong>Location:</strong> ${[p.town, p.county, p.estate, p.pin_label].filter(Boolean).join(', ') || 'Not provided'}</p>
-            <p><strong>Rent period:</strong> ${(p.rent_period || 'MONTH').toLowerCase()} · <strong>Expires:</strong> ${new Date(p.expires_at).toLocaleString()}</p>
+            <p><strong>Expiry:</strong> ${new Date(p.expires_at).toLocaleString()}</p>
             <p><strong>Details:</strong> ${p.bedrooms || 0} bedroom(s), ${p.bathrooms || 1} bathroom(s) · Deposit ${Number(p.deposit || 0).toLocaleString()} KES · ${p.furnished_status || 'UNFURNISHED'} · Suitable for: ${p.target_tenants_desc || 'Not specified'}</p>
             <p><strong>Priority:</strong> ${p.priority_label || 'Normal'} · Score ${p.priority_score || 1} ${p.priority_expires_at ? `until ${new Date(p.priority_expires_at).toLocaleString()}` : ''}</p>
             <p><strong>Description:</strong> ${p.description || 'No description'}</p>
             <div class="flex flex-wrap gap-2">${photos.map((src) => `<img src="${src}" alt="Listing photo" class="h-24 w-32 rounded object-cover" />`).join('')}</div>
-            <form onsubmit="saveAdminProperty(event, '${p.id}')" class="mt-4 grid grid-cols-1 gap-2 rounded-lg border bg-slate-50 p-3 md:grid-cols-3">
+            <form id="admin-edit-form-${p.id}" onsubmit="saveAdminProperty(event, '${p.id}')" class="mt-4 grid grid-cols-1 gap-2 rounded-lg border bg-slate-50 p-3 md:grid-cols-3">
               <h3 class="font-bold md:col-span-3">Edit listing details</h3>
               <input data-field="title" value="${escapeHtml(p.title)}" placeholder="Building / listing name" class="rounded border px-2 py-1.5" required />
               <input data-field="owner_name" value="${escapeHtml(p.owner_name)}" placeholder="Owner name" class="rounded border px-2 py-1.5" />
-              <input data-field="rent_amount" type="number" min="1" value="${Number(p.min_rent ?? p.monthly_rent ?? 0)}" placeholder="Price (KES)" class="rounded border px-2 py-1.5" required />
-              <select data-field="rent_period" class="rounded border px-2 py-1.5">
-                <option value="DAY" ${p.rent_period === 'DAY' ? 'selected' : ''}>Per day</option>
-                <option value="NIGHT" ${p.rent_period === 'NIGHT' ? 'selected' : ''}>Per night</option>
-                <option value="MONTH" ${(p.rent_period || 'MONTH') === 'MONTH' ? 'selected' : ''}>Per month</option>
-                <option value="YEAR" ${p.rent_period === 'YEAR' ? 'selected' : ''}>Per year</option>
-              </select>
               <fieldset class="rounded border bg-white p-2 md:col-span-3">
                 <legend class="px-1 font-semibold">Property types</legend>
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">${ADMIN_PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1"><input type="checkbox" name="adminPropertyType-${p.id}" value="${type}" ${propertyTypes.includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}</div>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">${ADMIN_PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1"><input type="checkbox" name="adminPropertyType-${p.id}" value="${type}" onchange="toggleAdminPricingRows('${p.id}')" ${propertyTypes.includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}</div>
+              </fieldset>
+              <fieldset class="space-y-2 rounded border bg-slate-50 p-2 md:col-span-3">
+                <legend class="px-1 font-semibold">Price and charging period for each selected type</legend>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">${pricingRows}</div>
               </fieldset>
               <input data-field="county" value="${escapeHtml(p.county)}" placeholder="County" class="rounded border px-2 py-1.5" />
               <input data-field="town" value="${escapeHtml(p.town)}" placeholder="Town" class="rounded border px-2 py-1.5" />
@@ -582,6 +617,26 @@
       }, 'Prioritizing...', 'Prioritized');
     };
 
+    window.toggleAdminRentDays = (select) => {
+      const row = select.closest('[data-admin-rent-row]');
+      const daysRow = row.querySelector('[data-admin-rent-days-row]');
+      daysRow.classList.toggle('hidden', select.value !== 'DAY' || row.classList.contains('hidden'));
+    };
+
+    window.toggleAdminPricingRows = (id) => {
+      const form = document.getElementById(`admin-edit-form-${id}`);
+      if (!form) return;
+      const selectedTypes = new Set(Array.from(form.querySelectorAll(`input[name="adminPropertyType-${id}"]:checked`))
+        .map((input) => input.value));
+      form.querySelectorAll('[data-admin-rent-row]').forEach((row) => {
+        const selected = selectedTypes.has(row.dataset.adminRentRow);
+        row.classList.toggle('hidden', !selected);
+        row.querySelector('[data-admin-rent-price]').required = selected;
+        const periodSelect = row.querySelector('[data-admin-rent-period]');
+        row.querySelector('[data-admin-rent-days-row]').classList.toggle('hidden', !selected || periodSelect.value !== 'DAY');
+      });
+    };
+
     window.saveAdminProperty = async (event, id) => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -597,6 +652,17 @@
         const propertyTypes = Array.from(form.querySelectorAll(`input[name="adminPropertyType-${id}"]:checked`))
           .map((input) => input.value);
         if (!propertyTypes.length) throw new Error('Select at least one property type.');
+        const rentPricing = Object.fromEntries(propertyTypes.map((type) => {
+          const row = form.querySelector(`[data-admin-rent-row="${type}"]`);
+          const period = row.querySelector(`[data-admin-rent-period="${type}"]`).value;
+          return [type, {
+            price: Number(row.querySelector(`[data-admin-rent-price="${type}"]`).value),
+            rent_period: period,
+            rent_period_days: period === 'DAY'
+              ? Number(row.querySelector(`[data-admin-rent-days="${type}"]`).value || 1)
+              : 1,
+          }];
+        }));
         const data = await adminRequest(`${API_URL}/api/admin/properties/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -604,8 +670,7 @@
             title: field('title'),
             owner_name: field('owner_name'),
             property_types: propertyTypes,
-            rent_amount: Number(field('rent_amount')),
-            rent_period: field('rent_period'),
+            rent_pricing: rentPricing,
             county: field('county'),
             town: field('town'),
             estate: field('estate'),
@@ -728,9 +793,16 @@
     };
 
     window.giftUserPost = async (id, btn) => {
-      const input = prompt('How many days should the gifted one-post entitlement remain usable? (1–3650)', '30');
-      if (input === null) return;
-      const days = Number(input);
+      const postsInput = prompt('How many posts should be gifted? (1–1000)', '1');
+      if (postsInput === null) return;
+      const posts = Number(postsInput);
+      if (!Number.isInteger(posts) || posts < 1 || posts > 1000) {
+        adminBanner('Enter a whole number of posts between 1 and 1000.');
+        return;
+      }
+      const daysInput = prompt(`How many days until these ${posts} gifted post${posts === 1 ? '' : 's'} expire? (1–3650)`, '30');
+      if (daysInput === null) return;
+      const days = Number(daysInput);
       if (!Number.isInteger(days) || days < 1 || days > 3650) {
         adminBanner('Enter a whole number of gifted post days between 1 and 3650.');
         return;
@@ -739,7 +811,7 @@
         const data = await adminRequest(`${API_URL}/api/admin/users/${id}/gift-post`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ days }),
+          body: JSON.stringify({ posts, days }),
         });
         adminBanner(data.message);
         await loadOverview();
