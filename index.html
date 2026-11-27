@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Replace with the deployed API origin when publishing this frontend. -->
   <meta name="api-base" content="http://localhost:4000" />
-  <title>HouseHunter — Houses & Landlord Portal</title>
+  <title>KejaSasa — Houses & Homes</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .text-xs { font-size: .875rem; line-height: 1.25rem; }
@@ -68,13 +68,13 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
   <header class="sticky top-0 z-20 bg-white border-b px-4 py-3">
     <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      <button type="button" onclick="showPublicBrowse()" class="text-xl font-bold text-emerald-700">HouseHunter</button>
+      <button type="button" onclick="showPublicBrowse()" class="text-xl font-bold text-emerald-700">KejaSasa</button>
       <div class="flex items-center gap-2 flex-wrap">
         <button type="button" onclick="showPublicBrowse()" class="px-3 py-1.5 rounded-lg border text-sm font-medium hover:bg-slate-50">
-          Browse Houses
+          Browse Houses & Homes
         </button>
         <button type="button" onclick="handlePostHouseClick()" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-          + Post a House
+          + Advertise a House or Home
         </button>
         <button type="button" id="accountAccessBtn" onclick="openAccountAccess()" class="rounded-lg border px-3 py-1.5 text-sm font-semibold">Sign in / Create account</button>
         <button type="button" id="myDashboardBtn" onclick="showUserPortal()" class="hidden px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-900 text-sm font-semibold">
@@ -181,6 +181,10 @@
 
   <!-- PUBLIC BROWSE VIEW -->
   <main id="publicSection" class="max-w-6xl w-full mx-auto p-4 space-y-6 flex-1">
+    <section class="rounded-xl border bg-white p-4">
+      <h1 class="text-xl font-bold text-slate-900">Free house and home advertisements, and homes to rent</h1>
+      <p class="mt-1 text-sm text-slate-600">KejaSasa helps owners advertise houses and homes and helps people find a place to live.</p>
+    </section>
     <section class="bg-white p-4 rounded-xl border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
       <input id="qInput" placeholder="Building name, town, estate, county..." class="border rounded-lg px-3 py-2 text-sm" />
       <select id="typeFilterInput" class="border rounded-lg px-3 py-2 text-base">
@@ -195,6 +199,7 @@
         <option value="House">House</option>
         <option value="Lodging">Lodging</option>
         <option value="Cottage">Cottage</option>
+        <option value="Restaurant">Restaurant</option>
       </select>
       <details id="advancedFilters" class="col-span-full">
         <summary class="cursor-pointer text-sm font-semibold text-emerald-800">More filters and sorting</summary>
@@ -240,8 +245,9 @@
       <p id="modalTargetTenants" class="text-xs text-slate-600 italic"></p>
 
       <div class="flex gap-2">
-        <a id="modalCall" href="#" class="flex-1 text-center py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm">Call</a>
-        <a id="modalWa" href="#" target="_blank" rel="noreferrer" class="flex-1 text-center py-2.5 rounded-lg bg-green-600 text-white font-semibold text-sm">WhatsApp</a>
+        <a id="modalCall" href="#" class="hidden flex-1 text-center py-2.5 rounded-lg bg-slate-900 text-white font-semibold text-sm">Call</a>
+        <a id="modalWa" href="#" target="_blank" rel="noreferrer" class="hidden flex-1 text-center py-2.5 rounded-lg bg-green-600 text-white font-semibold text-sm">WhatsApp</a>
+        <button id="modalUnlockContact" type="button" onclick="unlockListingContact(reportHouseId, this)" class="hidden flex-1 rounded-lg bg-amber-500 py-2.5 text-sm font-semibold text-slate-950">Unlock contact</button>
       </div>
 
       <div class="border-t pt-3 space-y-2">
@@ -299,10 +305,6 @@
 
     <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <p id="quotaNote" class="text-xs text-slate-500"></p>
-      <section class="rounded-lg border bg-slate-50 p-3">
-        <h3 class="font-semibold">Your post credits</h3>
-        <div id="postEntitlements" class="mt-2 space-y-2" aria-live="polite"></div>
-      </section>
       <details>
       <summary class="cursor-pointer text-lg font-bold">2. Create a property listing</summary>
       <form onsubmit="createHouse(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -321,6 +323,7 @@
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="House" onchange="refreshNewPricing()" /> House</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Lodging" onchange="refreshNewPricing()" /> Lodging</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Cottage" onchange="refreshNewPricing()" /> Cottage</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Restaurant" onchange="refreshNewPricing()" /> Restaurant</label>
           </div>
         </fieldset>
         <fieldset class="space-y-2 rounded-lg border p-3 md:col-span-3">
@@ -343,7 +346,7 @@
 
         <div class="md:col-span-3 space-y-2">
           <div class="flex items-center justify-between">
-            <label class="text-xs font-semibold text-slate-700">Photos (Max 4 — first photo clicked becomes cover)</label>
+            <label class="text-xs font-semibold text-slate-700">Photos (3 included — fourth photo is paid; max 4)</label>
             <input id="pPhotoFiles" type="file" accept="image/*" multiple onchange="handleNewPostFiles(event)" class="text-xs" />
           </div>
           <div id="newPostPhotoPreviews" class="flex gap-2 flex-wrap"></div>
@@ -351,7 +354,7 @@
 
         <textarea id="pDesc" placeholder="Description (optional)" class="border rounded-lg px-3 py-2 text-sm md:col-span-3" rows="2"></textarea>
         <button id="createHouseSubmitBtn" type="submit" class="md:col-span-3 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700">
-          Submit House for Admin Approval
+          Submit Free Listing for Admin Approval
         </button>
       </form>
       </details>
@@ -362,13 +365,12 @@
       <div class="flex flex-wrap gap-2 items-center">
         <input id="payPhone" placeholder="M-Pesa phone (07XXXXXXXX)" inputmode="tel" class="border rounded-lg px-3 py-2 text-base" />
       </div>
-      <p class="text-sm text-slate-600">Choose a plan, renewal, photo or priority upgrade to send a payment prompt to this number. Add-photo fee: <strong><span id="addPhotoFeeLabel">30</span> KES</strong>.</p>
+      <p class="text-sm text-slate-600">Listings are free. Add-photo fee: <strong><span id="addPhotoFeeLabel">30</span> KES</strong>. Payments to unlock contacts go to the KejaSasa system, not the landlord or house owner.</p>
       <div id="myHousesBox" class="space-y-3"></div>
     </section>
 
     <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
-      <h2 class="text-lg font-bold">4. Post Plans & Priority Boosts</h2>
-      <div id="plansRow" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+      <h2 class="text-lg font-bold">4. Payment history</h2>
       <div id="myPaymentsBox" class="space-y-2 pt-2"></div>
     </section>
   </main>
@@ -420,7 +422,7 @@
 
   <footer class="bg-white border-t px-4 py-4 mt-8">
     <div class="max-w-6xl mx-auto flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
-      <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
+      <span>© <span id="currentYear"></span> KejaSasa. Free house and home advertisements, plus homes to rent.</span>
       <div id="footerContact" class="flex flex-wrap gap-3">
         <a href="faq.html" class="font-semibold text-slate-800 underline">FAQs</a>
         <a href="terms.html" class="font-semibold text-slate-800 underline">Terms & Conditions</a>
@@ -445,7 +447,7 @@
   <script>
     const PROPERTY_TYPES = [
       'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
-      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage', 'Restaurant',
     ];
     const COMPRESS_CONFIG = {
       maxWidth: 800,
@@ -467,13 +469,14 @@
     let newPostImages = [];
     let pollInterval = null;
     let pendingPaymentId = null;
+    let pendingPaymentIntent = null;
     let paymentWaiting = false;
     let paymentIntent = null;
     let addPhotoPrice = 30;
     let authMode = 'login';
     let pendingPayment = null;
     let activePriorityPlans = [];
-    let activePostPlans = [];
+    const unlockedContacts = {};
     let portalHasLoaded = false;
     const pricingDrafts = {};
 
@@ -996,7 +999,10 @@
     window.handleNewPostFiles = async (e) => {
       const files = Array.from(e.target.files || []);
       for (const f of files) {
-        if (newPostImages.length >= 4) break;
+        if (newPostImages.length >= 3) {
+          banner('New listings include up to 3 free photos. You can pay to add a fourth photo after posting.');
+          break;
+        }
         const compressed = await compressImageFile(f);
         newPostImages.push(compressed);
       }
@@ -1113,8 +1119,10 @@
         }
 
         container.innerHTML = allHouses.map((h) => {
-          const waText = encodeURIComponent(`Hello, I saw "${h.title}" on HouseHunter. Is it available?`);
+          const waText = encodeURIComponent(`Hello, I saw "${h.title}" on KejaSasa. Is it available?`);
           const typeRates = rentDetailsFor(h);
+          const contacts = unlockedContacts[h.id] || h;
+          const hasContact = Boolean(contacts.contact_phone && contacts.contact_whatsapp);
           return `
             <article class="bg-white rounded-xl border overflow-hidden shadow-sm flex flex-col justify-between">
               <div>
@@ -1133,8 +1141,11 @@
               </div>
               <div class="p-4 pt-0 space-y-2">
                 <div class="flex gap-2">
-                  <a href="tel:+${h.contact_phone}" class="flex-1 text-center py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">Call</a>
-                  <a href="https://wa.me/${h.contact_whatsapp}?text=${waText}" target="_blank" rel="noreferrer" class="flex-1 text-center py-2 rounded-lg bg-green-600 text-white text-sm font-medium">WhatsApp</a>
+                  ${hasContact ? `<a href="tel:+${contacts.contact_phone}" class="flex-1 text-center py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">Call</a>
+                  <a href="https://wa.me/${contacts.contact_whatsapp}?text=${waText}" target="_blank" rel="noreferrer" class="flex-1 text-center py-2 rounded-lg bg-green-600 text-white text-sm font-medium">WhatsApp</a>` : `
+                  <button type="button" onclick="unlockListingContact('${h.id}', this)" class="w-full rounded-lg bg-amber-500 py-2 text-sm font-semibold text-slate-950">
+                    Unlock contact · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}
+                  </button>`}
                 </div>
                 <div class="flex gap-2">
                   <a href="${buildGoogleMapsUrl(h)}" target="_blank" rel="noreferrer" class="flex-1 text-center py-1.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold">
@@ -1191,6 +1202,22 @@
       document.getElementById(id).addEventListener('change', scheduleHouseSearch);
     });
 
+    function renderModalContact(h) {
+      const contacts = unlockedContacts[h.id] || h;
+      const hasContact = Boolean(contacts.contact_phone && contacts.contact_whatsapp);
+      const callLink = document.getElementById('modalCall');
+      const whatsappLink = document.getElementById('modalWa');
+      const unlockButton = document.getElementById('modalUnlockContact');
+      callLink.classList.toggle('hidden', !hasContact);
+      whatsappLink.classList.toggle('hidden', !hasContact);
+      unlockButton.classList.toggle('hidden', hasContact || !h.contact_locked);
+      unlockButton.textContent = `Unlock contact · KES ${Number(h.contact_unlock_price || 10).toLocaleString()}`;
+      if (hasContact) {
+        callLink.href = `tel:+${contacts.contact_phone}`;
+        whatsappLink.href = `https://wa.me/${contacts.contact_whatsapp}`;
+      }
+    }
+
     async function openModal(h) {
       reportHouseId = h.id;
       document.getElementById('modalTitle').textContent = h.title;
@@ -1201,8 +1228,7 @@
       document.getElementById('modalRent').textContent = formatRentLabel(h);
       document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
-      document.getElementById('modalCall').href = `tel:+${h.contact_phone}`;
-      document.getElementById('modalWa').href = `https://wa.me/${h.contact_whatsapp}`;
+      renderModalContact(h);
 
       const requestedHouseId = h.id;
       const m = document.getElementById('houseModal');
@@ -1237,8 +1263,7 @@
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
       document.getElementById('modalDesc').textContent = h.description || '';
       document.getElementById('modalTargetTenants').textContent = h.target_tenants_desc ? `Suitable for: ${h.target_tenants_desc}` : '';
-      document.getElementById('modalCall').href = `tel:+${h.contact_phone}`;
-      document.getElementById('modalWa').href = `https://wa.me/${h.contact_whatsapp}`;
+      renderModalContact(h);
 
       const renderGallery = (activeIdx) => {
         const chosen = imgs[activeIdx] || imgs[0] || 'https://placehold.co/600x400?text=No+Photo';
@@ -1340,7 +1365,7 @@
             pin_label: document.getElementById('pPinLabel').value.trim(),
             target_tenants_desc: document.getElementById('pTargetTenants').value.trim(),
             description: document.getElementById('pDesc').value.trim(),
-            images: newPostImages.slice(0, 4),
+            images: newPostImages.slice(0, 3),
           }),
         });
         const data = await res.json();
@@ -1416,6 +1441,40 @@
       }, 'Deleting...', 'Deleted');
     };
 
+    window.addFreePhotosToHouse = async (id, fileInput) => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) return;
+      const button = fileInput.closest('label');
+      const currentImages = Array.from(document.querySelectorAll(`.edit-kept-img[data-prop="${id}"]`))
+        .map((element) => element.dataset.src);
+      const availableSlots = Math.max(0, 3 - currentImages.length);
+      if (files.length > availableSlots) {
+        banner(`You can add ${availableSlots} more free photo${availableSlots === 1 ? '' : 's'} to this listing.`);
+        fileInput.value = '';
+        return;
+      }
+      if (button) button.classList.add('pointer-events-none', 'opacity-60');
+      try {
+        const newImages = [];
+        for (const file of files) newImages.push(await compressImageFile(file));
+        const response = await fetch(`${API_URL}/api/user/properties/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ kept_images: currentImages, new_images: newImages }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Could not add free photos.');
+        banner(data.message || 'Free photos added.');
+        await loadUserPortal();
+        await loadHouses();
+      } catch (error) {
+        banner(error.message || 'Could not add free photos.');
+      } finally {
+        fileInput.value = '';
+        button?.classList.remove('pointer-events-none', 'opacity-60');
+      }
+    };
+
     window.payAddPhotoToHouse = async (id, fileInput) => {
       const file = fileInput.files?.[0];
       if (!file) return banner('Choose a photo first');
@@ -1462,20 +1521,11 @@
       const pData = await pRes.json();
       if (!pRes.ok || !pData.success) throw new Error(pData.message || 'Could not load account plans.');
       const cfg = pData.data?.config || {};
-      activePostPlans = pData.data?.plans || [];
       activePriorityPlans = pData.data?.priorityPlans || [];
+      const freePostsAllowed = Number(cfg.free_posts_allowed || 5);
+      const freeContactDays = Number(cfg.free_post_duration_days || 14);
       addPhotoPrice = Number(cfg.add_photo_price || 30);
       document.getElementById('addPhotoFeeLabel').textContent = addPhotoPrice;
-      document.getElementById('quotaNote').innerHTML =
-        `Free first post: <strong>${cfg.free_posts_allowed || 1}</strong> (${cfg.free_post_duration_days || 14} days). Max 4 photos per post. Adding a photo to an existing post costs <strong>${addPhotoPrice} KES</strong>.`;
-
-      document.getElementById('plansRow').innerHTML = activePostPlans.map((pl) => `
-        <div class="border rounded-lg p-3 space-y-2">
-          <div class="font-bold">${pl.name} — ${pl.currency} ${Number(pl.price).toLocaleString()}</div>
-          <div class="text-sm text-slate-600">${pl.posts_allowed} posts • ${pl.duration_days} days</div>
-          <button type="button" onclick="pay('POST_PLAN', '${pl.id}', null, null, null, this, 'Purchase a post plan')" class="w-full py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold">Buy plan</button>
-        </div>
-      `).join('');
 
       const dRes = await fetch(`${API_URL}/api/user/dashboard`, { headers: authHeaders() });
       const dData = await dRes.json();
@@ -1485,53 +1535,21 @@
       refreshNav();
 
       const props = dData.data.properties || [];
-      const subscriptions = dData.data.subscriptions || [];
-      const activeComplimentaryPosts = subscriptions.filter((subscription) =>
-        subscription.source_type === 'FREE_FIRST_POST'
-        && subscription.status === 'ACTIVE'
-        && Date.parse(subscription.expires_at) > Date.now()
-        && Number(subscription.posts_used) < Number(subscription.posts_total));
-      const complimentaryPostsRemaining = activeComplimentaryPosts.reduce(
-        (total, subscription) => total + Number(subscription.posts_total) - Number(subscription.posts_used),
-        0,
-      );
-      if (complimentaryPostsRemaining) {
-        const nextExpiry = activeComplimentaryPosts
-          .map((subscription) => Date.parse(subscription.expires_at))
-          .sort((a, b) => a - b)[0];
-        document.getElementById('quotaNote').innerHTML +=
-          ` Complimentary posts available: <strong>${complimentaryPostsRemaining}</strong>; next expiry: <strong>${new Date(nextExpiry).toLocaleDateString()}</strong>.`;
-      }
-      document.getElementById('postEntitlements').innerHTML = subscriptions.map((subscription) => {
-        const total = Number(subscription.posts_total || 0);
-        const used = Math.min(total, Number(subscription.posts_used || 0));
-        const remaining = Math.max(0, total - used);
-        const expiry = Date.parse(subscription.expires_at);
-        const expired = !Number.isFinite(expiry) || expiry <= Date.now();
-        const active = subscription.status === 'ACTIVE' && !expired && remaining > 0;
-        const source = subscription.source_label === 'ADMIN_GIFT'
-          ? 'Gifted by admin'
-          : subscription.source_type === 'PAID_PLAN'
-            ? `Purchased${subscription.plan_name ? ` — ${subscription.plan_name}` : ' post plan'}`
-            : 'Free post allowance';
-        const status = active ? 'Available' : expired ? 'Expired' : remaining === 0 ? 'Used' : subscription.status;
-        const statusClass = active ? 'text-emerald-700' : expired || status === 'Used' ? 'text-slate-500' : 'text-amber-700';
-        return `<article class="flex flex-wrap items-center justify-between gap-2 rounded border bg-white px-3 py-2 text-sm">
-          <div><strong>${source}</strong><span class="ml-2 text-slate-600">${used}/${total} used · ${remaining} remaining</span></div>
-          <div class="text-right"><span class="${statusClass} font-semibold">${status}</span><div class="text-xs text-slate-500">Expires ${Number.isFinite(expiry) ? new Date(expiry).toLocaleString() : 'date unavailable'}</div></div>
-        </article>`;
-      }).join('') || '<p class="text-sm text-slate-600">No post credits yet.</p>';
+      const postsUsed = Number(user.free_post_used || 0);
+      document.getElementById('quotaNote').innerHTML =
+        `<strong>${Math.max(0, freePostsAllowed - postsUsed)}</strong> of <strong>${freePostsAllowed}</strong> free listing posts remaining for this account. Listings stay visible; contacts are free for ${freeContactDays} days, then unlock for a KejaSasa system fee. Three photos are included per new post; the fourth costs <strong>${addPhotoPrice} KES</strong>.`;
       window._userProps = props;
 
       document.getElementById('myHousesBox').innerHTML = props.map((h) => {
         const imgs = JSON.parse(h.images_json || '[]');
         const remainingDays = daysRemaining(h.expires_at);
-        const listingStatus = remainingDays === 0 ? 'EXPIRED' : h.availability_status;
+        const listingStatus = h.availability_status;
+        const contactStatus = h.contact_hidden || remainingDays === 0 ? 'CONTACTS LOCKED' : 'CONTACTS FREE';
         return `
           <details class="border rounded-xl bg-slate-50">
             <summary class="cursor-pointer p-4">
               <span class="block text-base font-bold">${h.title} (${formatRentLabel(h)})</span>
-              <span class="mt-1 block text-sm text-slate-600">Approval: <strong>${h.approval_status}</strong> · Status: <strong>${listingStatus}</strong> · ${remainingDays} days remaining</span>
+              <span class="mt-1 block text-sm text-slate-600">Approval: <strong>${h.approval_status}</strong> · Listing: <strong>${listingStatus}</strong> · <strong>${contactStatus}</strong> · ${remainingDays} free contact days remaining</span>
             </summary>
             <div class="space-y-4 border-t p-4">
             <div class="flex flex-wrap justify-between items-center gap-2">
@@ -1541,7 +1559,6 @@
               <div class="flex gap-1.5 flex-wrap">
                 <button type="button" onclick="setHouseStatus('${h.id}', 'OCCUPIED', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Occupied</button>
                 <button type="button" onclick="setHouseStatus('${h.id}', 'AVAILABLE', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Available</button>
-                <button type="button" onclick="setHouseStatus('${h.id}', 'PAUSED', this)" class="px-2.5 py-1 rounded border bg-white text-xs font-semibold">Pause</button>
                 </div>
             </div>
 
@@ -1574,21 +1591,22 @@
                   <button type="button" onclick="removeExistingPhoto('${h.id}', this.parentElement.dataset.src, this)" class="w-full text-sm text-red-600 font-bold" ${imgs.length <= 1 ? 'disabled title="Keep at least one photo"' : ''}>Delete Photo</button>
                 </div>
               `).join('')}
-              ${imgs.length < 4 ? `
+              ${imgs.length < 3 ? `
                 <label class="border border-dashed rounded p-2 bg-white text-xs cursor-pointer">
-                  <span class="font-semibold text-emerald-700">+ Add Photo (${addPhotoPrice} KES)</span>
+                  <span class="font-semibold text-emerald-700">+ Add free photo (${imgs.length}/3 used)</span>
+                  <input type="file" accept="image/*" multiple class="hidden" onchange="addFreePhotosToHouse('${h.id}', this)" />
+                </label>
+              ` : imgs.length < 4 ? `
+                <label class="border border-dashed rounded p-2 bg-white text-xs cursor-pointer">
+                  <span class="font-semibold text-emerald-700">+ Add fourth photo (${addPhotoPrice} KES)</span>
                   <input type="file" accept="image/*" class="hidden" onchange="payAddPhotoToHouse('${h.id}', this)" />
                 </label>
-              ` : `<span class="text-xs text-slate-500">Max 4 photos reached</span>`}
+              ` : `<span class="text-xs text-slate-500">Maximum 4 photos reached (3 included, fourth paid)</span>`}
             </div>
 
             <button type="button" onclick="saveEditedHouse('${h.id}', this)" class="px-4 py-1.5 rounded bg-emerald-600 text-white text-xs font-semibold">
               Save Changes
             </button>
-            <div class="border-t pt-3">
-              <h3 class="mb-2 text-base font-semibold">Renew listing</h3>
-              <div class="flex flex-wrap gap-2">${activePostPlans.map((plan) => `<button type="button" onclick="pay('POST_PLAN', '${plan.id}', null, '${h.id}', null, this, 'Renew this listing')" class="rounded bg-slate-800 px-3 py-2 text-sm font-semibold text-white">${plan.name} · KES ${Number(plan.price).toLocaleString()} · ${plan.duration_days} days</button>`).join('') || '<span class="text-sm text-slate-500">No renewal plans are available.</span>'}</div>
-            </div>
             <div class="border-t pt-3">
               <h3 class="mb-2 text-base font-semibold">Prioritize listing</h3>
               <div class="flex flex-wrap gap-2">${activePriorityPlans.map((plan) => `<button type="button" onclick="pay('PRIORITY_PROMOTION', null, '${plan.id}', '${h.id}', null, this, 'Prioritize this listing')" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">${plan.name} · KES ${Number(plan.price).toLocaleString()} · ${plan.duration_days} days</button>`).join('') || '<span class="text-sm text-slate-500">No priority plans are available.</span>'}</div>
@@ -1626,6 +1644,42 @@
       }, 'Updating...', 'Updated');
     };
 
+    window.unlockListingContact = async (propertyId, btn) => {
+      if (!userToken) {
+        banner('Please sign in or create a free account to unlock this contact.');
+        openAccountAccess();
+        return;
+      }
+      await runWithButtonFeedback(btn, async () => {
+        const response = await fetch(`${API_URL}/api/properties/${encodeURIComponent(propertyId)}/contact`, {
+          headers: authHeaders(),
+        });
+        const data = await response.json();
+        if (response.status === 402 && data.code === 'CONTACT_LOCKED') {
+          window.pay(
+            'CONTACT_UNLOCK',
+            null,
+            null,
+            propertyId,
+            null,
+            btn,
+            `To unlock this contact, please pay KES ${Number(data.amount).toLocaleString()} to the KejaSasa system. This small payment goes to KejaSasa, not the landlord or house owner.`,
+          );
+          return;
+        }
+        if (!response.ok || !data.success) throw new Error(data.message || 'Could not load this contact.');
+        unlockedContacts[propertyId] = data.data;
+        const listing = allHouses.find((house) => house.id === propertyId);
+        if (listing) {
+          listing.contact_locked = false;
+          listing.contact_phone = data.data.contact_phone;
+          listing.contact_whatsapp = data.data.contact_whatsapp;
+        }
+        renderModalContact({ ...(listing || {}), id: propertyId, contact_locked: false });
+        await loadHouses();
+      }, 'Checking contact...', 'Contact ready');
+    };
+
     window.pay = async (purpose, plan_id, priority_plan_id, property_id, new_photo, btn, description = '') => {
       paymentIntent = { purpose, plan_id, priority_plan_id, property_id, new_photo };
       document.getElementById('paymentModalTitle').textContent = 'Confirm payment';
@@ -1651,6 +1705,28 @@
       modal.classList.remove('flex');
       paymentIntent = null;
     };
+
+    async function completeVerifiedPayment(intent) {
+      if (intent?.purpose === 'CONTACT_UNLOCK') {
+        const response = await fetch(`${API_URL}/api/properties/${encodeURIComponent(intent.property_id)}/contact`, {
+          headers: authHeaders(),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Payment was confirmed, but the contact could not be loaded.');
+        }
+        unlockedContacts[intent.property_id] = data.data;
+        const listing = allHouses.find((house) => house.id === intent.property_id);
+        if (listing) {
+          listing.contact_phone = data.data.contact_phone;
+          listing.contact_whatsapp = data.data.contact_whatsapp;
+        }
+        await loadHouses();
+        return;
+      }
+      await loadUserPortal();
+      await loadHouses();
+    }
 
     window.confirmPayment = async (event) => {
       event.preventDefault();
@@ -1683,6 +1759,7 @@
         }
         document.getElementById('payPhone').value = phone;
         paymentIntent = null;
+        pendingPaymentIntent = intent;
         pendingPaymentId = data.data.payment_id;
         paymentWaiting = true;
         status.textContent = 'Payment prompt sent. Check your phone and enter your M-Pesa PIN. This window will stay open until the payment status is confirmed.';
@@ -1699,19 +1776,27 @@
               pollInterval = null;
               paymentWaiting = false;
               pendingPaymentId = null;
+              pendingPaymentIntent = null;
               status.textContent = 'Payment successful. Your changes are saved.';
               document.getElementById('paymentCancelBtn').disabled = false;
               document.getElementById('paymentConfirmBtn').disabled = false;
               document.getElementById('paymentConfirmBtn').type = 'button';
               document.getElementById('paymentConfirmBtn').textContent = 'Done';
               document.getElementById('paymentConfirmBtn').onclick = closePaymentModal;
-              await loadUserPortal();
-              await loadHouses();
+              try {
+                await completeVerifiedPayment(intent);
+                status.textContent = intent.purpose === 'CONTACT_UNLOCK'
+                  ? 'Payment successful. The contact is now unlocked.'
+                  : 'Payment successful. Your changes are saved.';
+              } catch (error) {
+                status.textContent = error.message || 'Payment succeeded, but the update could not be loaded.';
+              }
             } else if (['FAILED', 'CANCELLED'].includes(verifyData.data?.status)) {
               clearInterval(pollInterval);
               pollInterval = null;
               paymentWaiting = false;
               pendingPaymentId = null;
+              pendingPaymentIntent = null;
               status.textContent = verifyData.message || 'Payment failed or was cancelled. No changes were saved.';
               document.getElementById('paymentCancelBtn').disabled = false;
               document.getElementById('paymentConfirmBtn').disabled = false;
@@ -1757,6 +1842,7 @@
       const button = document.getElementById('paymentConfirmBtn');
       const cancelButton = document.getElementById('paymentCancelBtn');
       const status = document.getElementById('payStatus');
+      const intent = pendingPaymentIntent;
       paymentWaiting = true;
       button.disabled = true;
       cancelButton.disabled = true;
@@ -1766,11 +1852,18 @@
         const data = await response.json();
         if (data.data?.status === 'SUCCESSFUL') {
           pendingPaymentId = null;
-          status.textContent = 'Payment successful. Your changes are saved.';
-          await loadUserPortal();
-          await loadHouses();
+          pendingPaymentIntent = null;
+          try {
+            await completeVerifiedPayment(intent);
+            status.textContent = intent?.purpose === 'CONTACT_UNLOCK'
+              ? 'Payment successful. The contact is now unlocked.'
+              : 'Payment successful. Your changes are saved.';
+          } catch (error) {
+            status.textContent = error.message || 'Payment succeeded, but the update could not be loaded.';
+          }
         } else if (['FAILED', 'CANCELLED'].includes(data.data?.status)) {
           pendingPaymentId = null;
+          pendingPaymentIntent = null;
           status.textContent = `${data.message || 'Payment failed or was cancelled.'} No changes were saved.`;
         } else {
           status.textContent = 'Payment is still pending. No changes have been applied.';
