@@ -398,6 +398,7 @@
           const period = rate.rent_period || p.rent_period || 'MONTH';
           const days = Number(rate.rent_period_days || 1);
           const price = Number(rate.price ?? p.min_rent ?? p.monthly_rent ?? 0);
+          const availability = rate.availability_status || p.availability_status || 'AVAILABLE';
           const selected = propertyTypes.includes(type);
           return `<div data-admin-rent-row="${type}" class="grid grid-cols-2 gap-2 rounded border bg-white p-2 ${selected ? '' : 'hidden'}">
             <strong class="col-span-2 text-xs">${type}</strong>
@@ -407,6 +408,10 @@
               <option value="DAY" ${period === 'DAY' ? 'selected' : ''}>Per day(s)</option>
               <option value="MONTH" ${period === 'MONTH' ? 'selected' : ''}>Per month</option>
               <option value="YEAR" ${period === 'YEAR' ? 'selected' : ''}>Per year</option>
+            </select>
+            <select data-admin-rent-availability="${type}" aria-label="${type} availability" class="col-span-2 min-w-0 rounded border px-2 py-1.5">
+              <option value="AVAILABLE" ${availability === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+              <option value="OCCUPIED" ${availability === 'OCCUPIED' ? 'selected' : ''}>Occupied</option>
             </select>
             <label data-admin-rent-days-row class="col-span-2 flex items-center gap-2 text-xs ${selected && period === 'DAY' ? '' : 'hidden'}">
               Price covers every
@@ -419,10 +424,11 @@
           const rate = typePricing[type] || {};
           const period = rate.rent_period || p.rent_period || 'MONTH';
           const days = Number(rate.rent_period_days || 1);
+          const availability = (rate.availability_status || p.availability_status) === 'OCCUPIED' ? 'Occupied' : 'Available';
           const periodLabel = period === 'DAY'
             ? (days > 1 ? `every ${days} days` : 'per day')
             : `per ${({ NIGHT: 'night', MONTH: 'month', YEAR: 'year' }[period] || 'month')}`;
-          return `${type}: KES ${Number(rate.price ?? p.min_rent ?? p.monthly_rent ?? 0).toLocaleString()} ${periodLabel}`;
+          return `${type}: KES ${Number(rate.price ?? p.min_rent ?? p.monthly_rent ?? 0).toLocaleString()} ${periodLabel} (${availability})`;
         }).join(' · ');
         return `
         <details class="border rounded-lg p-3 text-sm">
@@ -661,6 +667,7 @@
             rent_period_days: period === 'DAY'
               ? Number(row.querySelector(`[data-admin-rent-days="${type}"]`).value || 1)
               : 1,
+            availability_status: row.querySelector(`[data-admin-rent-availability="${type}"]`).value,
           }];
         }));
         const data = await adminRequest(`${API_URL}/api/admin/properties/${id}`, {
