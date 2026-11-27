@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,6 +41,27 @@
       animation: listing-spin .8s linear infinite;
     }
     @keyframes listing-spin { to { transform: rotate(360deg); } }
+    @media (max-width: 640px) {
+      body > header { padding: .5rem .65rem; }
+      body > header .max-w-6xl { flex-wrap: nowrap; gap: .5rem; }
+      body > header .max-w-6xl > div:last-child { flex-wrap: nowrap; gap: .35rem; overflow-x: auto; }
+      body > header .max-w-6xl > div:last-child > :nth-child(n+5):not(#signOutBtn) { display: none; }
+      body > header .max-w-6xl > div:last-child > button,
+      body > header .max-w-6xl > div:last-child > a { flex-shrink: 0; padding: .35rem .5rem; font-size: .75rem; }
+      #publicSection { padding: .5rem; gap: .65rem; }
+      #publicSection > section:first-child { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4rem; padding: .5rem; }
+      #qInput, #advancedFilters { grid-column: 1 / -1; }
+      #typeFilterInput { grid-column: 1 / -1; }
+      #publicSection input, #publicSection select { min-width: 0; padding: .4rem .5rem; font-size: .8rem; }
+      #housesList article { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: stretch; }
+      #housesList article > div:first-child { display: contents; }
+      #housesList article img { width: 100%; height: 100%; min-height: 7.5rem; max-height: 9rem; object-fit: cover; }
+      #housesList article > div:first-child > div { padding: .55rem; }
+      #housesList article > div:last-child { grid-column: 1 / -1; padding: .5rem; }
+      #housesList article > div:last-child > div { gap: .4rem; }
+      #housesList article > div:last-child a,
+      #housesList article > div:last-child button { padding: .45rem .35rem; font-size: .72rem; }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
@@ -162,7 +182,6 @@
   <main id="publicSection" class="max-w-6xl w-full mx-auto p-4 space-y-6 flex-1">
     <section class="bg-white p-4 rounded-xl border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
       <input id="qInput" placeholder="Building name, town, estate, county..." class="border rounded-lg px-3 py-2 text-sm" />
-      <input id="ownerSearchInput" placeholder="Owner / Agent name..." class="border rounded-lg px-3 py-2 text-sm" />
       <select id="typeFilterInput" class="border rounded-lg px-3 py-2 text-base">
         <option value="">All Property Types</option>
         <option value="Single Room">Single Room</option>
@@ -176,15 +195,21 @@
         <option value="Lodging">Lodging</option>
         <option value="Cottage">Cottage</option>
       </select>
-      <input id="minRentInput" type="number" placeholder="Min Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
-      <input id="maxRentInput" type="number" placeholder="Max Rent (KES)" class="border rounded-lg px-3 py-2 text-sm" />
-      <select id="sortInput" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="priority">Sort: Priority</option>
-        <option value="newest">Sort: Newest</option>
-        <option value="lowest_price">Sort: Lowest Rent</option>
-        <option value="highest_price">Sort: Highest Rent</option>
-      </select>
-      <span class="col-span-full text-sm text-slate-500">Results update as you type or change filters.</span>
+      <details id="advancedFilters" class="col-span-full">
+        <summary class="cursor-pointer text-sm font-semibold text-emerald-800">More filters and sorting</summary>
+        <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <input id="ownerSearchInput" placeholder="Owner / Agent name..." class="border rounded-lg px-3 py-2 text-sm" />
+          <input id="minRentInput" type="number" placeholder="Min Price (KES)" class="border rounded-lg px-3 py-2 text-sm" />
+          <input id="maxRentInput" type="number" placeholder="Max Price (KES)" class="border rounded-lg px-3 py-2 text-sm" />
+          <select id="sortInput" class="border rounded-lg px-3 py-2 text-sm">
+            <option value="priority">Sort: Priority</option>
+            <option value="newest">Sort: Newest</option>
+            <option value="lowest_price">Sort: Lowest Price</option>
+            <option value="highest_price">Sort: Highest Price</option>
+          </select>
+        </div>
+      </details>
+      <span class="col-span-full text-xs text-slate-500">Search by building name or choose a type. More filters are optional.</span>
     </section>
 
     <section id="housesList" class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-live="polite" aria-busy="true">
@@ -273,6 +298,10 @@
 
     <section class="portal-data-section bg-white p-5 rounded-xl border space-y-3 hidden">
       <p id="quotaNote" class="text-xs text-slate-500"></p>
+      <section class="rounded-lg border bg-slate-50 p-3">
+        <h3 class="font-semibold">Your post credits</h3>
+        <div id="postEntitlements" class="mt-2 space-y-2" aria-live="polite"></div>
+      </section>
       <details>
       <summary class="cursor-pointer text-lg font-bold">2. Create a property listing</summary>
       <form onsubmit="createHouse(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -281,25 +310,23 @@
           <legend class="px-1 text-sm font-semibold">Types available in this building</legend>
           <p class="text-xs text-slate-600">Select every type you have, such as single rooms, bedsitters, and one-bedroom units.</p>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Single Room" /> Single Room</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Bedsitter" /> Bedsitter</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Studio" /> Studio</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="1 Bedroom" /> 1 Bedroom</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="2 Bedroom" /> 2 Bedroom</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="3 Bedroom" /> 3 Bedroom</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Apartment" /> Apartment</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="House" /> House</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Lodging" /> Lodging</label>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Cottage" /> Cottage</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Single Room" onchange="refreshNewPricing()" /> Single Room</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Bedsitter" onchange="refreshNewPricing()" /> Bedsitter</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Studio" onchange="refreshNewPricing()" /> Studio</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="1 Bedroom" onchange="refreshNewPricing()" /> 1 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="2 Bedroom" onchange="refreshNewPricing()" /> 2 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="3 Bedroom" onchange="refreshNewPricing()" /> 3 Bedroom</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Apartment" onchange="refreshNewPricing()" /> Apartment</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="House" onchange="refreshNewPricing()" /> House</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Lodging" onchange="refreshNewPricing()" /> Lodging</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Cottage" onchange="refreshNewPricing()" /> Cottage</label>
           </div>
         </fieldset>
-        <input id="pRent" type="number" min="1" step="1" placeholder="Price (KES)" class="border rounded-lg px-3 py-2 text-sm" required />
-        <select id="pRentPeriod" class="border rounded-lg px-3 py-2 text-base" aria-label="Rent charging period">
-          <option value="MONTH">Rent per month</option>
-          <option value="NIGHT">Rent per night</option>
-          <option value="DAY">Rent per day</option>
-          <option value="YEAR">Rent per year</option>
-        </select>
+        <fieldset class="space-y-2 rounded-lg border p-3 md:col-span-3">
+          <legend class="px-1 text-sm font-semibold">Price for each selected type</legend>
+          <p class="text-xs text-slate-600">Enter a separate price and charging period for every type you selected. For daily rates, choose how many days each price covers.</p>
+          <div id="newRentPricing" class="grid grid-cols-1 gap-2 sm:grid-cols-2"></div>
+        </fieldset>
         <select id="pAvailability" class="border rounded-lg px-3 py-2 text-base" aria-label="Initial property availability">
           <option value="AVAILABLE">Available</option>
           <option value="OCCUPIED">Occupied</option>
@@ -451,6 +478,87 @@
     let activePriorityPlans = [];
     let activePostPlans = [];
     let portalHasLoaded = false;
+    const pricingDrafts = {};
+
+    function rentPricingFor(house) {
+      const legacy = {
+        price: Number(house.min_rent ?? house.monthly_rent ?? 0),
+        rent_period: house.rent_period || 'MONTH',
+        rent_period_days: 1,
+      };
+      try {
+        const pricing = JSON.parse(house.type_pricing_json || '{}');
+        if (pricing && typeof pricing === 'object' && !Array.isArray(pricing) && Object.keys(pricing).length) {
+          return Object.fromEntries(propertyTypesFor(house).map((type) => [type, pricing[type] || legacy]));
+        }
+      } catch {
+        // Use the legacy single-rate fields for listings created before per-type prices.
+      }
+      return Object.fromEntries(propertyTypesFor(house).map((type) => [type, legacy]));
+    }
+
+    function readPricingEditor(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return {};
+      return Object.fromEntries(Array.from(container.querySelectorAll('[data-rent-type]')).map((row) => {
+        const price = row.querySelector('[data-rent-price]').value;
+        const period = row.querySelector('[data-rent-period]').value;
+        return [row.dataset.rentType, {
+          price: Number(price),
+          rent_period: period,
+          rent_period_days: period === 'DAY' ? Number(row.querySelector('[data-rent-days]').value || 1) : 1,
+        }];
+      }));
+    }
+
+    function renderPricingEditor(containerId, propertyTypes, initialPricing = {}) {
+      const draft = pricingDrafts[containerId] || { ...initialPricing };
+      pricingDrafts[containerId] = draft;
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = propertyTypes.map((type, index) => {
+        const value = draft[type] || {};
+        const period = ['DAY', 'NIGHT', 'MONTH', 'YEAR'].includes(value.rent_period || value.period)
+          ? (value.rent_period || value.period)
+          : 'MONTH';
+        const rowId = `${containerId}-${index}`;
+        return `<div data-rent-type="${type}" class="grid grid-cols-2 gap-2 rounded-lg border bg-slate-50 p-2">
+          <strong class="col-span-2 text-sm">${type}</strong>
+          <input data-rent-price type="number" min="1" step="1" value="${Number(value.price ?? value.rent_amount ?? '') || ''}" placeholder="Price (KES)" aria-label="${type} price in KES" class="min-w-0 rounded border px-2 py-1.5 text-sm" required />
+          <select data-rent-period aria-label="${type} charging period" onchange="toggleRentDays(this)" class="min-w-0 rounded border px-2 py-1.5 text-sm">
+            <option value="NIGHT" ${period === 'NIGHT' ? 'selected' : ''}>Per night</option>
+            <option value="DAY" ${period === 'DAY' ? 'selected' : ''}>Per day(s)</option>
+            <option value="MONTH" ${period === 'MONTH' ? 'selected' : ''}>Per month</option>
+            <option value="YEAR" ${period === 'YEAR' ? 'selected' : ''}>Per year</option>
+          </select>
+          <label data-rent-days-row class="col-span-2 flex items-center gap-2 text-xs ${period === 'DAY' ? '' : 'hidden'}" for="${rowId}-days">
+            Price covers every
+            <input id="${rowId}-days" data-rent-days type="number" min="1" max="365" step="1" value="${Number(value.rent_period_days ?? value.period_days ?? 1)}" class="w-20 rounded border px-2 py-1" />
+            day(s)
+          </label>
+        </div>`;
+      }).join('');
+    }
+
+    window.toggleRentDays = (select) => {
+      const row = select.closest('[data-rent-type]');
+      row.querySelector('[data-rent-days-row]').classList.toggle('hidden', select.value !== 'DAY');
+    };
+
+    window.refreshNewPricing = () => {
+      pricingDrafts.newRentPricing ||= {};
+      Object.assign(pricingDrafts.newRentPricing, readPricingEditor('newRentPricing'));
+      const selected = selectedPropertyTypes('input[name="pPropertyType"]');
+      renderPricingEditor('newRentPricing', selected, pricingDrafts.newRentPricing);
+    };
+
+    window.refreshEditPricing = (id) => {
+      const containerId = `editRentPricing-${id}`;
+      pricingDrafts[containerId] ||= {};
+      Object.assign(pricingDrafts[containerId], readPricingEditor(containerId));
+      const selected = selectedPropertyTypes(`input[name="editPropertyType-${id}"]`);
+      renderPricingEditor(containerId, selected, pricingDrafts[containerId]);
+    };
 
     window.openContactModal = () => {
       const modal = document.getElementById('contactModal');
@@ -913,15 +1021,22 @@
       `).join('');
     }
 
+    function rentLinesFor(h) {
+      const pricing = rentPricingFor(h);
+      return propertyTypesFor(h).map((type) => {
+        const rate = pricing[type] || {};
+        const price = Number(rate.price ?? rate.rent_amount ?? h.min_rent ?? h.monthly_rent ?? 0);
+        const period = rate.rent_period || rate.period || h.rent_period || 'MONTH';
+        const days = Number(rate.rent_period_days ?? rate.period_days ?? 1);
+        const periodLabel = period === 'DAY'
+          ? (days > 1 ? `every ${days} days` : 'per day')
+          : `per ${({ NIGHT: 'night', MONTH: 'month', YEAR: 'year' }[period] || 'month')}`;
+        return `${type}: KES ${price.toLocaleString()} ${periodLabel}`;
+      });
+    }
+
     function formatRentLabel(h) {
-      const minR = Number(h.min_rent ?? h.monthly_rent ?? 0);
-      const period = {
-        DAY: 'day',
-        NIGHT: 'night',
-        MONTH: 'month',
-        YEAR: 'year',
-      }[h.rent_period] || 'month';
-      return `KES ${minR.toLocaleString()} / ${period}`;
+      return rentLinesFor(h).join(' · ');
     }
 
     function daysRemaining(expiresAt) {
@@ -984,7 +1099,8 @@
                     Owner/Agent: ${h.owner_name}
                   </button>
                   <p class="text-sm text-slate-600">${[h.estate, h.town, h.county].filter(Boolean).join(', ')}</p>
-                  <p class="font-bold text-emerald-700">${formatRentLabel(h)}</p>
+                  <p class="font-bold text-emerald-700">${rentLinesFor(h)[0] || formatRentLabel(h)}</p>
+                  ${propertyTypesFor(h).length > 1 ? `<details class="text-xs text-slate-600"><summary class="cursor-pointer">Prices for other ${propertyTypesFor(h).length - 1} type(s)</summary><div class="mt-1 space-y-0.5">${rentLinesFor(h).slice(1).map((line) => `<p>${line}</p>`).join('')}</div></details>` : ''}
                   <p class="text-sm font-semibold ${h.availability_status === 'OCCUPIED' ? 'text-amber-700' : 'text-emerald-700'}">${h.availability_status === 'OCCUPIED' ? 'Occupied' : 'Available'}</p>
                 </div>
               </div>
@@ -1166,8 +1282,17 @@
       try {
         const propertyTypes = selectedPropertyTypes('input[name="pPropertyType"]');
         if (!propertyTypes.length) throw new Error('Select at least one type available in this building.');
-        const price = Number(document.getElementById('pRent').value);
-        if (!Number.isFinite(price) || price <= 0) throw new Error('Enter a valid listing price.');
+        const rentPricing = readPricingEditor('newRentPricing');
+        for (const type of propertyTypes) {
+          if (!Number.isFinite(rentPricing[type]?.price) || rentPricing[type].price <= 0) {
+            throw new Error(`Enter a valid price for ${type}.`);
+          }
+          if (rentPricing[type].rent_period === 'DAY'
+            && (!Number.isInteger(rentPricing[type].rent_period_days)
+              || rentPricing[type].rent_period_days < 1 || rentPricing[type].rent_period_days > 365)) {
+            throw new Error(`Choose between 1 and 365 days for ${type}.`);
+          }
+        }
         const res = await fetch(`${API_URL}/api/properties`, {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -1175,9 +1300,7 @@
             title: document.getElementById('pTitle').value.trim(),
             property_type: propertyTypes[0],
             property_types: propertyTypes,
-            min_rent: price,
-            max_rent: price,
-            rent_period: document.getElementById('pRentPeriod').value,
+            rent_pricing: rentPricing,
             availability_status: document.getElementById('pAvailability').value,
             county: document.getElementById('pCounty').value.trim(),
             town: document.getElementById('pTown').value.trim(),
@@ -1195,6 +1318,8 @@
         banner(data.message || 'Listing submitted successfully.');
         e.target.reset();
         newPostImages = [];
+        pricingDrafts.newRentPricing = {};
+        renderPricingEditor('newRentPricing', []);
         renderNewPostPreviews();
         showSubmitResult('Success: submitted');
         loadUserPortal().catch((error) => banner(error.message || 'Could not refresh your listings.'));
@@ -1213,6 +1338,7 @@
         if (!keptImgs.length) return banner('A listing must keep at least one photo.');
         const propertyTypes = selectedPropertyTypes(`input[name="editPropertyType-${id}"]`);
         if (!propertyTypes.length) return banner('Select at least one type available in this building.');
+        const rentPricing = readPricingEditor(`editRentPricing-${id}`);
         const pinButton = document.getElementById(`editLocationButton-${id}`);
         const res = await fetch(`${API_URL}/api/user/properties/${id}`, {
           method: 'PUT',
@@ -1221,9 +1347,7 @@
             title: document.getElementById(`edit-title-${id}`).value.trim(),
             property_type: propertyTypes[0],
             property_types: propertyTypes,
-            min_rent: Number(document.getElementById(`edit-rent-${id}`).value || 0),
-            max_rent: Number(document.getElementById(`edit-rent-${id}`).value || 0),
-            rent_period: document.getElementById(`edit-period-${id}`).value,
+            rent_pricing: rentPricing,
             county: document.getElementById(`edit-county-${id}`).value.trim(),
             town: document.getElementById(`edit-town-${id}`).value.trim(),
             estate: document.getElementById(`edit-estate-${id}`).value.trim(),
@@ -1331,7 +1455,8 @@
       refreshNav();
 
       const props = dData.data.properties || [];
-      const activeComplimentaryPosts = (dData.data.subscriptions || []).filter((subscription) =>
+      const subscriptions = dData.data.subscriptions || [];
+      const activeComplimentaryPosts = subscriptions.filter((subscription) =>
         subscription.source_type === 'FREE_FIRST_POST'
         && subscription.status === 'ACTIVE'
         && Date.parse(subscription.expires_at) > Date.now()
@@ -1347,6 +1472,25 @@
         document.getElementById('quotaNote').innerHTML +=
           ` Complimentary posts available: <strong>${complimentaryPostsRemaining}</strong>; next expiry: <strong>${new Date(nextExpiry).toLocaleDateString()}</strong>.`;
       }
+      document.getElementById('postEntitlements').innerHTML = subscriptions.map((subscription) => {
+        const total = Number(subscription.posts_total || 0);
+        const used = Math.min(total, Number(subscription.posts_used || 0));
+        const remaining = Math.max(0, total - used);
+        const expiry = Date.parse(subscription.expires_at);
+        const expired = !Number.isFinite(expiry) || expiry <= Date.now();
+        const active = subscription.status === 'ACTIVE' && !expired && remaining > 0;
+        const source = subscription.source_label === 'ADMIN_GIFT'
+          ? 'Gifted by admin'
+          : subscription.source_type === 'PAID_PLAN'
+            ? `Purchased${subscription.plan_name ? ` — ${subscription.plan_name}` : ' post plan'}`
+            : 'Free post allowance';
+        const status = active ? 'Available' : expired ? 'Expired' : remaining === 0 ? 'Used' : subscription.status;
+        const statusClass = active ? 'text-emerald-700' : expired || status === 'Used' ? 'text-slate-500' : 'text-amber-700';
+        return `<article class="flex flex-wrap items-center justify-between gap-2 rounded border bg-white px-3 py-2 text-sm">
+          <div><strong>${source}</strong><span class="ml-2 text-slate-600">${used}/${total} used · ${remaining} remaining</span></div>
+          <div class="text-right"><span class="${statusClass} font-semibold">${status}</span><div class="text-xs text-slate-500">Expires ${Number.isFinite(expiry) ? new Date(expiry).toLocaleString() : 'date unavailable'}</div></div>
+        </article>`;
+      }).join('') || '<p class="text-sm text-slate-600">No post credits yet.</p>';
       window._userProps = props;
 
       document.getElementById('myHousesBox').innerHTML = props.map((h) => {
@@ -1376,16 +1520,13 @@
               <fieldset class="space-y-2 rounded border bg-white p-2 md:col-span-3">
                 <legend class="px-1 text-xs font-semibold">Types available in this building</legend>
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  ${PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="editPropertyType-${h.id}" value="${type}" ${propertyTypesFor(h).includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}
+                  ${PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="editPropertyType-${h.id}" value="${type}" onchange="refreshEditPricing('${h.id}')" ${propertyTypesFor(h).includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}
                 </div>
               </fieldset>
-              <input id="edit-rent-${h.id}" type="number" min="1" step="1" value="${h.min_rent ?? h.monthly_rent ?? 0}" placeholder="Price (KES)" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
-              <select id="edit-period-${h.id}" class="border rounded px-2.5 py-1.5 text-base bg-white">
-                <option value="DAY" ${h.rent_period === 'DAY' ? 'selected' : ''}>Per day</option>
-                <option value="NIGHT" ${h.rent_period === 'NIGHT' ? 'selected' : ''}>Per night</option>
-                <option value="MONTH" ${(h.rent_period || 'MONTH') === 'MONTH' ? 'selected' : ''}>Per month</option>
-                <option value="YEAR" ${h.rent_period === 'YEAR' ? 'selected' : ''}>Per year</option>
-              </select>
+              <fieldset class="space-y-2 rounded border bg-white p-2 md:col-span-3">
+                <legend class="px-1 text-xs font-semibold">Price for each selected type</legend>
+                <div id="editRentPricing-${h.id}" class="grid grid-cols-1 gap-2 sm:grid-cols-2"></div>
+              </fieldset>
               <input id="edit-county-${h.id}" value="${h.county || ''}" placeholder="County" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
               <input id="edit-town-${h.id}" value="${h.town || ''}" placeholder="Town" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
               <input id="edit-estate-${h.id}" value="${h.estate || ''}" placeholder="Estate" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
@@ -1426,6 +1567,12 @@
           </details>
         `;
       }).join('') || `<div class="text-sm text-slate-500">No houses posted yet.</div>`;
+
+      props.forEach((house) => {
+        const containerId = `editRentPricing-${house.id}`;
+        pricingDrafts[containerId] = rentPricingFor(house);
+        renderPricingEditor(containerId, propertyTypesFor(house), pricingDrafts[containerId]);
+      });
 
       document.getElementById('myPaymentsBox').innerHTML = (dData.data.payments || []).map((pay) => `
         <div class="border rounded-lg p-2.5 text-xs flex justify-between">
