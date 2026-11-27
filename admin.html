@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -152,6 +153,10 @@
 
   <script>
     const API_URL = 'https://nyumbabackedd.onrender.com';
+    const ADMIN_PROPERTY_TYPES = [
+      'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage',
+    ];
     let adminToken = sessionStorage.getItem('hh_admin_token') || '';
     let adminProperties = [];
     document.getElementById('currentYear').textContent = new Date().getFullYear();
@@ -309,7 +314,7 @@
           <summary class="cursor-pointer font-semibold">${r.property_title || r.property_id} — ${r.reason} · ${r.status}</summary>
           <div class="mt-3 space-y-2">
             <p><strong>Report details:</strong> ${r.details || 'No extra details'}</p>
-            ${property ? `<p><strong>Listing:</strong> ${property.title} (${displayPropertyTypes(property)}) · ${Number(property.min_rent || property.monthly_rent || 0).toLocaleString()}-${Number(property.max_rent || property.monthly_rent || 0).toLocaleString()} KES / ${(property.rent_period || 'MONTH').toLowerCase()} · ${[property.town, property.county, property.estate].filter(Boolean).join(', ')}</p>
+            ${property ? `<p><strong>Listing:</strong> ${property.title} (${displayPropertyTypes(property)}) · KES ${Number(property.min_rent || property.monthly_rent || 0).toLocaleString()} / ${(property.rent_period || 'MONTH').toLowerCase()} · ${[property.town, property.county, property.estate].filter(Boolean).join(', ')}</p>
             <p><strong>Owner:</strong> ${property.owner_name} · ${property.contact_phone || '-'} · <strong>Status:</strong> ${property.approval_status} / ${property.availability_status}</p>
             <p><strong>Details:</strong> ${property.bedrooms || 0} bedroom(s), ${property.bathrooms || 1} bathroom(s) · Deposit ${Number(property.deposit || 0).toLocaleString()} KES · ${property.furnished_status || 'UNFURNISHED'} · Suitable for: ${property.target_tenants_desc || 'Not specified'}</p>
             <p><strong>Landmark:</strong> ${property.pin_label || 'Not provided'}</p>
@@ -338,9 +343,12 @@
             <strong>${u.full_name}</strong> (${u.email}) — <strong>${u.phone || '-'}</strong>
             <div class="text-slate-500">Call: ${u.call_phone || '-'} • WA: ${u.whatsapp_phone || '-'}</div>
           </div>
-          <button type="button" onclick="toggleUserSuspend('${u.id}', ${u.is_suspended ? 0 : 1}, this)" class="px-2.5 py-1 rounded border font-semibold">
-            ${u.is_suspended ? 'Activate' : 'Suspend'}
-          </button>
+          <div class="flex shrink-0 gap-1.5">
+            <button type="button" onclick="giftUserPost('${u.id}', this)" class="px-2.5 py-1 rounded border border-emerald-400 font-semibold text-emerald-800">Gift one post</button>
+            <button type="button" onclick="toggleUserSuspend('${u.id}', ${u.is_suspended ? 0 : 1}, this)" class="px-2.5 py-1 rounded border font-semibold">
+              ${u.is_suspended ? 'Activate' : 'Suspend'}
+            </button>
+          </div>
         </div>
       `).join('');
 
@@ -363,11 +371,25 @@
       });
       document.getElementById('adminPropsList').innerHTML = matches.map((p) => {
         const photos = JSON.parse(p.images_json || '[]');
+        let propertyTypes = [];
+        let amenities = [];
+        try {
+          propertyTypes = JSON.parse(p.property_types_json || '[]');
+        } catch {
+          propertyTypes = [];
+        }
+        try {
+          amenities = JSON.parse(p.amenities_json || '[]');
+        } catch {
+          amenities = [];
+        }
+        if (!Array.isArray(propertyTypes) || !propertyTypes.length) propertyTypes = [p.property_type];
+        if (!Array.isArray(amenities)) amenities = [];
         const expired = new Date(p.expires_at).getTime() <= Date.now();
         return `
         <details class="border rounded-lg p-3 text-sm">
           <summary class="cursor-pointer">
-            <strong>${p.title}</strong> (${displayPropertyTypes(p)}) — ${Number(p.min_rent || p.monthly_rent || 0).toLocaleString()}-${Number(p.max_rent || p.monthly_rent || 0).toLocaleString()} KES / ${(p.rent_period || 'MONTH').toLowerCase()}
+            <strong>${escapeHtml(p.title)}</strong> (${escapeHtml(displayPropertyTypes(p))}) — KES ${Number(p.min_rent || p.monthly_rent || 0).toLocaleString()} / ${(p.rent_period || 'MONTH').toLowerCase()}
             <span class="block text-slate-600">Owner: ${p.owner_name} · ${[p.town, p.county].filter(Boolean).join(', ')} · ${p.approval_status} / ${expired ? 'EXPIRED' : p.availability_status}</span>
           </summary>
           <div class="mt-3 space-y-2">
@@ -378,12 +400,66 @@
             <p><strong>Priority:</strong> ${p.priority_label || 'Normal'} · Score ${p.priority_score || 1} ${p.priority_expires_at ? `until ${new Date(p.priority_expires_at).toLocaleString()}` : ''}</p>
             <p><strong>Description:</strong> ${p.description || 'No description'}</p>
             <div class="flex flex-wrap gap-2">${photos.map((src) => `<img src="${src}" alt="Listing photo" class="h-24 w-32 rounded object-cover" />`).join('')}</div>
+            <form onsubmit="saveAdminProperty(event, '${p.id}')" class="mt-4 grid grid-cols-1 gap-2 rounded-lg border bg-slate-50 p-3 md:grid-cols-3">
+              <h3 class="font-bold md:col-span-3">Edit listing details</h3>
+              <input data-field="title" value="${escapeHtml(p.title)}" placeholder="Building / listing name" class="rounded border px-2 py-1.5" required />
+              <input data-field="owner_name" value="${escapeHtml(p.owner_name)}" placeholder="Owner name" class="rounded border px-2 py-1.5" />
+              <input data-field="rent_amount" type="number" min="1" value="${Number(p.min_rent ?? p.monthly_rent ?? 0)}" placeholder="Price (KES)" class="rounded border px-2 py-1.5" required />
+              <select data-field="rent_period" class="rounded border px-2 py-1.5">
+                <option value="DAY" ${p.rent_period === 'DAY' ? 'selected' : ''}>Per day</option>
+                <option value="NIGHT" ${p.rent_period === 'NIGHT' ? 'selected' : ''}>Per night</option>
+                <option value="MONTH" ${(p.rent_period || 'MONTH') === 'MONTH' ? 'selected' : ''}>Per month</option>
+                <option value="YEAR" ${p.rent_period === 'YEAR' ? 'selected' : ''}>Per year</option>
+              </select>
+              <fieldset class="rounded border bg-white p-2 md:col-span-3">
+                <legend class="px-1 font-semibold">Property types</legend>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">${ADMIN_PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1"><input type="checkbox" name="adminPropertyType-${p.id}" value="${type}" ${propertyTypes.includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}</div>
+              </fieldset>
+              <input data-field="county" value="${escapeHtml(p.county)}" placeholder="County" class="rounded border px-2 py-1.5" />
+              <input data-field="town" value="${escapeHtml(p.town)}" placeholder="Town" class="rounded border px-2 py-1.5" />
+              <input data-field="estate" value="${escapeHtml(p.estate)}" placeholder="Estate / area" class="rounded border px-2 py-1.5" />
+              <input data-field="pin_lat" type="number" step="any" value="${p.pin_lat ?? ''}" placeholder="Latitude" class="rounded border px-2 py-1.5" />
+              <input data-field="pin_lng" type="number" step="any" value="${p.pin_lng ?? ''}" placeholder="Longitude" class="rounded border px-2 py-1.5" />
+              <input data-field="pin_label" value="${escapeHtml(p.pin_label)}" placeholder="Location landmark" class="rounded border px-2 py-1.5" />
+              <input data-field="contact_phone" value="${escapeHtml(p.contact_phone)}" placeholder="Contact phone" class="rounded border px-2 py-1.5" />
+              <input data-field="contact_whatsapp" value="${escapeHtml(p.contact_whatsapp)}" placeholder="WhatsApp number" class="rounded border px-2 py-1.5" />
+              <input data-field="deposit" type="number" min="0" value="${Number(p.deposit || 0)}" placeholder="Deposit (KES)" class="rounded border px-2 py-1.5" />
+              <input data-field="bedrooms" type="number" min="0" value="${Number(p.bedrooms || 0)}" placeholder="Bedrooms" class="rounded border px-2 py-1.5" />
+              <input data-field="bathrooms" type="number" min="0" value="${Number(p.bathrooms || 0)}" placeholder="Bathrooms" class="rounded border px-2 py-1.5" />
+              <select data-field="furnished_status" class="rounded border px-2 py-1.5">
+                <option value="UNFURNISHED" ${(p.furnished_status || 'UNFURNISHED') === 'UNFURNISHED' ? 'selected' : ''}>Unfurnished</option>
+                <option value="FURNISHED" ${p.furnished_status === 'FURNISHED' ? 'selected' : ''}>Furnished</option>
+              </select>
+              <select data-field="approval_status" class="rounded border px-2 py-1.5">
+                <option value="PENDING_APPROVAL" ${p.approval_status === 'PENDING_APPROVAL' ? 'selected' : ''}>Pending approval</option>
+                <option value="APPROVED" ${p.approval_status === 'APPROVED' ? 'selected' : ''}>Approved</option>
+                <option value="REJECTED" ${p.approval_status === 'REJECTED' ? 'selected' : ''}>Rejected</option>
+              </select>
+              <select data-field="availability_status" class="rounded border px-2 py-1.5">
+                <option value="AVAILABLE" ${p.availability_status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+                <option value="OCCUPIED" ${p.availability_status === 'OCCUPIED' ? 'selected' : ''}>Occupied</option>
+                <option value="PAUSED" ${p.availability_status === 'PAUSED' ? 'selected' : ''}>Paused</option>
+                <option value="EXPIRED" ${p.availability_status === 'EXPIRED' ? 'selected' : ''}>Expired</option>
+                <option value="PENDING_APPROVAL" ${p.availability_status === 'PENDING_APPROVAL' ? 'selected' : ''}>Pending approval</option>
+              </select>
+              <input data-field="target_tenants_desc" value="${escapeHtml(p.target_tenants_desc)}" placeholder="Suitable for" class="rounded border px-2 py-1.5 md:col-span-3" />
+              <textarea data-field="description" rows="2" placeholder="Description" class="rounded border px-2 py-1.5 md:col-span-3">${escapeHtml(p.description)}</textarea>
+              <label class="space-y-1 text-xs font-semibold">Amenities JSON
+                <textarea data-field="amenities" rows="2" class="w-full rounded border px-2 py-1.5 font-normal">${escapeHtml(JSON.stringify(amenities, null, 2))}</textarea>
+              </label>
+              <label class="space-y-1 text-xs font-semibold md:col-span-2">Photos JSON (up to 4 image URLs/data URLs)
+                <textarea data-field="images" rows="3" class="w-full rounded border px-2 py-1.5 font-normal">${escapeHtml(JSON.stringify(photos, null, 2))}</textarea>
+              </label>
+              <button type="submit" class="rounded bg-emerald-700 px-3 py-2 font-semibold text-white md:col-span-3">Save listing edits</button>
+            </form>
             <div class="flex flex-wrap gap-2">
               <button type="button" onclick="actProp('${p.id}', 'approve', this)" class="rounded bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Approve</button>
               <button type="button" onclick="actProp('${p.id}', 'reject', this)" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">Reject</button>
               <button type="button" onclick="actProp('${p.id}', 'pause', this)" class="rounded border px-3 py-2 text-sm font-semibold">Pause</button>
               ${p.availability_status === 'PAUSED' ? `<button type="button" onclick="actProp('${p.id}', 'restore', this)" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Restore paused listing</button>` : ''}
               <button type="button" onclick="extendProp('${p.id}', this)" class="rounded border px-3 py-2 text-sm font-semibold">${expired ? 'Add days to expired listing' : 'Extend listing'}</button>
+              <button type="button" onclick="giftProp('${p.id}', this)" class="rounded border border-emerald-400 px-3 py-2 text-sm font-semibold text-emerald-800">Gift listing days</button>
+              <button type="button" onclick="prioritizeProp('${p.id}', this)" class="rounded bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950">Set custom priority duration</button>
               <button type="button" onclick="delProp('${p.id}', this)" class="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white">Delete</button>
             </div>
           </div>
@@ -466,6 +542,93 @@
         adminBanner(data.message);
         await loadOverview();
       }, 'Extending...', 'Extended');
+    };
+
+    window.giftProp = async (id, btn) => {
+      const input = prompt('How many additional days should be gifted to this listing? (1–3650)', '30');
+      if (input === null) return;
+      const days = Number(input);
+      if (!Number.isInteger(days) || days < 1 || days > 3650) {
+        adminBanner('Enter a whole number of gifted days between 1 and 3650.');
+        return;
+      }
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}/gift`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ days }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Gifting...', 'Gifted');
+    };
+
+    window.prioritizeProp = async (id, btn) => {
+      const input = prompt('How many days should this listing stay prioritized? (1–36500)', '30');
+      if (input === null) return;
+      const days = Number(input);
+      if (!Number.isInteger(days) || days < 1 || days > 36500) {
+        adminBanner('Enter a whole number of priority days between 1 and 36500.');
+        return;
+      }
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}/priority`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ days }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Prioritizing...', 'Prioritized');
+    };
+
+    window.saveAdminProperty = async (event, id) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      await runWithButtonFeedback(event.submitter, async () => {
+        const field = (name) => form.querySelector(`[data-field="${name}"]`).value;
+        const parseJson = (name, label) => {
+          try {
+            return JSON.parse(field(name));
+          } catch {
+            throw new Error(`${label} must contain valid JSON.`);
+          }
+        };
+        const propertyTypes = Array.from(form.querySelectorAll(`input[name="adminPropertyType-${id}"]:checked`))
+          .map((input) => input.value);
+        if (!propertyTypes.length) throw new Error('Select at least one property type.');
+        const data = await adminRequest(`${API_URL}/api/admin/properties/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: field('title'),
+            owner_name: field('owner_name'),
+            property_types: propertyTypes,
+            rent_amount: Number(field('rent_amount')),
+            rent_period: field('rent_period'),
+            county: field('county'),
+            town: field('town'),
+            estate: field('estate'),
+            pin_lat: field('pin_lat'),
+            pin_lng: field('pin_lng'),
+            pin_label: field('pin_label'),
+            contact_phone: field('contact_phone'),
+            contact_whatsapp: field('contact_whatsapp'),
+            deposit: Number(field('deposit')),
+            bedrooms: Number(field('bedrooms')),
+            bathrooms: Number(field('bathrooms')),
+            furnished_status: field('furnished_status'),
+            approval_status: field('approval_status'),
+            availability_status: field('availability_status'),
+            target_tenants_desc: field('target_tenants_desc'),
+            description: field('description'),
+            amenities: parseJson('amenities', 'Amenities'),
+            images: parseJson('images', 'Photos'),
+          }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Saving...', 'Saved');
     };
 
     window.decideReport = async (reportId, decision, btn) => {
@@ -562,6 +725,25 @@
         adminBanner(data.message);
         await loadOverview();
       }, 'Updating...', 'Updated');
+    };
+
+    window.giftUserPost = async (id, btn) => {
+      const input = prompt('How many days should the gifted one-post entitlement remain usable? (1–3650)', '30');
+      if (input === null) return;
+      const days = Number(input);
+      if (!Number.isInteger(days) || days < 1 || days > 3650) {
+        adminBanner('Enter a whole number of gifted post days between 1 and 3650.');
+        return;
+      }
+      await runWithButtonFeedback(btn, async () => {
+        const data = await adminRequest(`${API_URL}/api/admin/users/${id}/gift-post`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ days }),
+        });
+        adminBanner(data.message);
+        await loadOverview();
+      }, 'Gifting...', 'Gifted');
     };
 
     checkAccess();
