@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -307,8 +308,8 @@
       <form onsubmit="createHouse(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         <input id="pTitle" placeholder="House / Building Title (optional)" class="border rounded-lg px-3 py-2 text-sm" />
         <fieldset class="space-y-2 rounded-lg border p-3 md:col-span-3">
-          <legend class="px-1 text-sm font-semibold">Types available in this building</legend>
-          <p class="text-xs text-slate-600">Select every type you have, such as single rooms, bedsitters, and one-bedroom units.</p>
+          <legend class="px-1 text-sm font-semibold">Types in this building</legend>
+          <p class="text-xs text-slate-600">Select each type you rent, then set its price and whether it is currently available or occupied.</p>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Single Room" onchange="refreshNewPricing()" /> Single Room</label>
             <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="pPropertyType" value="Bedsitter" onchange="refreshNewPricing()" /> Bedsitter</label>
@@ -324,13 +325,9 @@
         </fieldset>
         <fieldset class="space-y-2 rounded-lg border p-3 md:col-span-3">
           <legend class="px-1 text-sm font-semibold">Price for each selected type</legend>
-          <p class="text-xs text-slate-600">Enter a separate price and charging period for every type you selected. For daily rates, choose how many days each price covers.</p>
+          <p class="text-xs text-slate-600">Enter a separate price, charging period, and availability for every selected type. For daily rates, choose how many days each price covers.</p>
           <div id="newRentPricing" class="grid grid-cols-1 gap-2 sm:grid-cols-2"></div>
         </fieldset>
-        <select id="pAvailability" class="border rounded-lg px-3 py-2 text-base" aria-label="Initial property availability">
-          <option value="AVAILABLE">Available</option>
-          <option value="OCCUPIED">Occupied</option>
-        </select>
         <input id="pCounty" placeholder="County (optional)" class="border rounded-lg px-3 py-2 text-sm" />
         <input id="pTown" placeholder="Town (optional)" class="border rounded-lg px-3 py-2 text-sm" />
         <input id="pEstate" placeholder="Estate / Area (optional)" class="border rounded-lg px-3 py-2 text-sm" />
@@ -485,11 +482,16 @@
         price: Number(house.min_rent ?? house.monthly_rent ?? 0),
         rent_period: house.rent_period || 'MONTH',
         rent_period_days: 1,
+        availability_status: house.availability_status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
       };
       try {
         const pricing = JSON.parse(house.type_pricing_json || '{}');
         if (pricing && typeof pricing === 'object' && !Array.isArray(pricing) && Object.keys(pricing).length) {
-          return Object.fromEntries(propertyTypesFor(house).map((type) => [type, pricing[type] || legacy]));
+          return Object.fromEntries(propertyTypesFor(house).map((type) => [type, {
+            ...legacy,
+            ...(pricing[type] || {}),
+            availability_status: pricing[type]?.availability_status || legacy.availability_status,
+          }]));
         }
       } catch {
         // Use the legacy single-rate fields for listings created before per-type prices.
@@ -507,6 +509,7 @@
           price: Number(price),
           rent_period: period,
           rent_period_days: period === 'DAY' ? Number(row.querySelector('[data-rent-days]').value || 1) : 1,
+          availability_status: row.querySelector('[data-rent-availability]').value,
         }];
       }));
     }
@@ -521,6 +524,7 @@
         const period = ['DAY', 'NIGHT', 'MONTH', 'YEAR'].includes(value.rent_period || value.period)
           ? (value.rent_period || value.period)
           : 'MONTH';
+        const availability = value.availability_status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE';
         const rowId = `${containerId}-${index}`;
         return `<div data-rent-type="${type}" class="grid grid-cols-2 gap-2 rounded-lg border bg-slate-50 p-2">
           <strong class="col-span-2 text-sm">${type}</strong>
@@ -530,6 +534,10 @@
             <option value="DAY" ${period === 'DAY' ? 'selected' : ''}>Per day(s)</option>
             <option value="MONTH" ${period === 'MONTH' ? 'selected' : ''}>Per month</option>
             <option value="YEAR" ${period === 'YEAR' ? 'selected' : ''}>Per year</option>
+          </select>
+          <select data-rent-availability aria-label="${type} availability" class="col-span-2 min-w-0 rounded border px-2 py-1.5 text-sm">
+            <option value="AVAILABLE" ${availability === 'AVAILABLE' ? 'selected' : ''}>Available</option>
+            <option value="OCCUPIED" ${availability === 'OCCUPIED' ? 'selected' : ''}>Occupied</option>
           </select>
           <label data-rent-days-row class="col-span-2 flex items-center gap-2 text-xs ${period === 'DAY' ? '' : 'hidden'}" for="${rowId}-days">
             Price covers every
@@ -1035,6 +1043,24 @@
       });
     }
 
+    function rentDetailsFor(h) {
+      const pricing = rentPricingFor(h);
+      return propertyTypesFor(h).map((type) => {
+        const rate = pricing[type] || {};
+        const price = Number(rate.price ?? rate.rent_amount ?? h.min_rent ?? h.monthly_rent ?? 0);
+        const period = rate.rent_period || rate.period || h.rent_period || 'MONTH';
+        const days = Number(rate.rent_period_days ?? rate.period_days ?? 1);
+        const periodLabel = period === 'DAY'
+          ? (days > 1 ? `every ${days} days` : 'per day')
+          : `per ${({ NIGHT: 'night', MONTH: 'month', YEAR: 'year' }[period] || 'month')}`;
+        return {
+          type,
+          priceText: `KES ${price.toLocaleString()} ${periodLabel}`,
+          availabilityStatus: rate.availability_status === 'OCCUPIED' ? 'OCCUPIED' : 'AVAILABLE',
+        };
+      });
+    }
+
     function formatRentLabel(h) {
       return rentLinesFor(h).join(' · ');
     }
@@ -1088,6 +1114,7 @@
 
         container.innerHTML = allHouses.map((h) => {
           const waText = encodeURIComponent(`Hello, I saw "${h.title}" on HouseHunter. Is it available?`);
+          const typeRates = rentDetailsFor(h);
           return `
             <article class="bg-white rounded-xl border overflow-hidden shadow-sm flex flex-col justify-between">
               <div>
@@ -1099,9 +1126,9 @@
                     Owner/Agent: ${h.owner_name}
                   </button>
                   <p class="text-sm text-slate-600">${[h.estate, h.town, h.county].filter(Boolean).join(', ')}</p>
-                  <p class="font-bold text-emerald-700">${rentLinesFor(h)[0] || formatRentLabel(h)}</p>
-                  ${propertyTypesFor(h).length > 1 ? `<details class="text-xs text-slate-600"><summary class="cursor-pointer">Prices for other ${propertyTypesFor(h).length - 1} type(s)</summary><div class="mt-1 space-y-0.5">${rentLinesFor(h).slice(1).map((line) => `<p>${line}</p>`).join('')}</div></details>` : ''}
-                  <p class="text-sm font-semibold ${h.availability_status === 'OCCUPIED' ? 'text-amber-700' : 'text-emerald-700'}">${h.availability_status === 'OCCUPIED' ? 'Occupied' : 'Available'}</p>
+                  <div class="mt-2 space-y-1" aria-label="Prices and availability by type">
+                    ${typeRates.map((rate) => `<p class="text-sm"><strong>${rate.type}:</strong> ${rate.priceText} <span class="font-semibold ${rate.availabilityStatus === 'OCCUPIED' ? 'text-amber-700' : 'text-emerald-700'}">${rate.availabilityStatus === 'OCCUPIED' ? 'Occupied' : 'Available'}</span></p>`).join('')}
+                  </div>
                 </div>
               </div>
               <div class="p-4 pt-0 space-y-2">
@@ -1168,7 +1195,9 @@
       reportHouseId = h.id;
       document.getElementById('modalTitle').textContent = h.title;
       document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
-      document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
+      document.getElementById('modalType').textContent = rentDetailsFor(h)
+        .map((rate) => `${rate.type}: ${rate.availabilityStatus === 'OCCUPIED' ? 'Occupied' : 'Available'}`)
+        .join(' · ');
       document.getElementById('modalRent').textContent = formatRentLabel(h);
       document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
@@ -1200,7 +1229,9 @@
       const imgs = JSON.parse(h.images_json || '[]');
       document.getElementById('modalTitle').textContent = h.title;
       document.getElementById('modalOwnerRow').textContent = `Owner / Agent: ${h.owner_name}`;
-      document.getElementById('modalType').textContent = `${propertyTypesFor(h).join(' · ')} • ${h.availability_status}`;
+      document.getElementById('modalType').textContent = rentDetailsFor(h)
+        .map((rate) => `${rate.type}: ${rate.availabilityStatus === 'OCCUPIED' ? 'Occupied' : 'Available'}`)
+        .join(' · ');
       document.getElementById('modalRent').textContent = formatRentLabel(h);
       document.getElementById('modalLoc').textContent = [h.pin_label, h.estate, h.town, h.county].filter(Boolean).join(', ');
       document.getElementById('modalMapPinBtn').href = buildGoogleMapsUrl(h);
@@ -1301,7 +1332,6 @@
             property_type: propertyTypes[0],
             property_types: propertyTypes,
             rent_pricing: rentPricing,
-            availability_status: document.getElementById('pAvailability').value,
             county: document.getElementById('pCounty').value.trim(),
             town: document.getElementById('pTown').value.trim(),
             estate: document.getElementById('pEstate').value.trim(),
@@ -1518,7 +1548,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
               <input id="edit-title-${h.id}" value="${h.title.replace(/"/g, '&quot;')}" class="border rounded px-2.5 py-1.5 text-xs bg-white" />
               <fieldset class="space-y-2 rounded border bg-white p-2 md:col-span-3">
-                <legend class="px-1 text-xs font-semibold">Types available in this building</legend>
+                <legend class="px-1 text-xs font-semibold">Types in this building</legend>
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   ${PROPERTY_TYPES.map((type) => `<label class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="editPropertyType-${h.id}" value="${type}" onchange="refreshEditPricing('${h.id}')" ${propertyTypesFor(h).includes(type) ? 'checked' : ''} /> ${type}</label>`).join('')}
                 </div>
