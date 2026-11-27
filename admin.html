@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Replace with the deployed API origin when publishing this frontend. -->
   <meta name="api-base" content="http://localhost:4000" />
-  <title>HouseHunter — Admin Control Panel</title>
+  <title>KejaSasa — Admin Control Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .text-xs { font-size: .875rem; line-height: 1.25rem; }
@@ -16,7 +16,7 @@
   <header class="bg-slate-900 text-white border-b border-slate-800 px-4 py-3">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <span class="text-xl font-bold text-amber-400">HouseHunter Admin</span>
+        <span class="text-xl font-bold text-amber-400">KejaSasa Admin</span>
         <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700">User Site</a>
       </div>
       <div class="flex items-center gap-2">
@@ -77,45 +77,37 @@
           <option value="APPROVED">Approved</option>
           <option value="REJECTED">Rejected</option>
           <option value="PAUSED">Paused</option>
-          <option value="EXPIRED">Expired</option>
+          <option value="CONTACTS_LOCKED">Contacts locked</option>
         </select>
       </label>
       <div id="adminPropsList" class="space-y-2"></div>
     </section>
 
     <form onsubmit="saveSystemConfig(event)" class="bg-white p-5 rounded-xl border space-y-3">
-      <h3 class="font-bold">Add-Photo Price & Free Post Rules</h3>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <h3 class="font-bold">Free Listings & Contact Unlock Pricing</h3>
+      <p class="text-sm text-slate-600">Each account gets a configurable number of free listings. Listings remain visible after the free contact period; a small system fee is required to unlock contacts. The fee goes to KejaSasa, not the landlord or house owner. Three photos are included per new listing; the fourth photo costs the configured add-photo fee.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <label class="text-xs font-semibold text-slate-600">Add Photo to Existing Post (KES)</label>
-          <input id="cAddPhotoPrice" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+          <label class="text-xs font-semibold text-slate-600">Free Posts per Account</label>
+          <input id="cFreePosts" type="number" min="1" max="100" step="1" class="w-full border rounded px-3 py-2 text-sm" required />
         </div>
         <div>
-          <label class="text-xs font-semibold text-slate-600">Free Posts Allowed</label>
-          <input id="cFreePosts" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+          <label class="text-xs font-semibold text-slate-600">Add Fourth Photo Fee (KES)</label>
+          <input id="cAddPhotoPrice" type="number" min="1" max="1000000" step="1" class="w-full border rounded px-3 py-2 text-sm" required />
         </div>
         <div>
-          <label class="text-xs font-semibold text-slate-600">Free Post Duration (Days)</label>
-          <input id="cFreeDays" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
+          <label class="text-xs font-semibold text-slate-600">Free Contact Period Before Lock (Days)</label>
+          <input id="cFreeDays" type="number" min="1" max="3650" step="1" class="w-full border rounded px-3 py-2 text-sm" required />
         </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600">Default Duration (Days)</label>
-          <input id="cDefaultDays" type="number" class="w-full border rounded px-3 py-2 text-sm" required />
-        </div>
+      </div>
+      <div>
+        <h4 class="mb-2 text-sm font-semibold">Contact unlock amount by listing type (KES)</h4>
+        <div id="contactUnlockPrices" class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"></div>
       </div>
       <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-semibold">Save Pricing & Rules</button>
     </form>
 
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <form onsubmit="createPostPlan(event)" class="bg-white p-5 rounded-xl border space-y-3">
-        <h3 class="font-bold">Create Post Entitlement Plan</h3>
-        <input id="ppName" placeholder="Name (e.g. Standard)" class="w-full border rounded px-3 py-2 text-sm" required />
-        <input id="ppPrice" type="number" placeholder="Price (KES)" class="w-full border rounded px-3 py-2 text-sm" required />
-        <input id="ppPosts" type="number" placeholder="Posts Allowed" class="w-full border rounded px-3 py-2 text-sm" required />
-        <input id="ppDays" type="number" placeholder="Duration (Days)" class="w-full border rounded px-3 py-2 text-sm" required />
-        <button type="submit" class="w-full bg-slate-900 text-white py-2 rounded text-sm font-semibold">Save Post Plan</button>
-      </form>
-
+    <section class="grid grid-cols-1 gap-4">
       <form onsubmit="createPriorityPlan(event)" class="bg-white p-5 rounded-xl border space-y-3">
         <h3 class="font-bold">Create Priority Plan</h3>
         <input id="prName" placeholder="Name (e.g. Featured)" class="w-full border rounded px-3 py-2 text-sm" required />
@@ -127,8 +119,8 @@
     </section>
 
     <section class="bg-white p-5 rounded-xl border space-y-3">
-      <h2 class="text-lg font-bold">View and manage plans</h2>
-      <p class="text-sm text-slate-600">Edits are saved to the database. Deleting a plan deactivates it, preserving past payment records.</p>
+      <h2 class="text-lg font-bold">Priority boost plans</h2>
+      <p class="text-sm text-slate-600">House and home posts are free. Priority boost edits are saved to the database.</p>
       <div id="adminPlansList" class="grid grid-cols-1 gap-3 lg:grid-cols-2"></div>
     </section>
 
@@ -146,7 +138,7 @@
 
   <footer class="mx-auto mt-8 w-full max-w-7xl border-t border-slate-800 px-4 py-4 text-sm text-slate-300">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <span>© <span id="currentYear"></span> HouseHunter. All rights reserved.</span>
+      <span>© <span id="currentYear"></span> KejaSasa. Free house and home advertisements, plus homes to rent.</span>
       <a href="https://stackcrafts.com" target="_blank" rel="noopener noreferrer" class="font-semibold text-amber-300 underline">Powered by Stackcrafts Studio</a>
     </div>
   </footer>
@@ -155,7 +147,7 @@
     const API_URL = 'https://nyumbabackedd.onrender.com';
     const ADMIN_PROPERTY_TYPES = [
       'Single Room', 'Bedsitter', 'Studio', '1 Bedroom', '2 Bedroom',
-      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage',
+      '3 Bedroom', 'Apartment', 'House', 'Lodging', 'Cottage', 'Restaurant',
     ];
     let adminToken = sessionStorage.getItem('hh_admin_token') || '';
     let adminProperties = [];
@@ -289,7 +281,7 @@
     async function loadOverview() {
       const data = await adminRequest(`${API_URL}/api/admin/overview`);
 
-      const { stats, properties, plans, priorityPlans, users, payments, reports, alerts, config } = data.data;
+      const { stats, properties, priorityPlans, users, payments, reports, alerts, config } = data.data;
       document.getElementById('statsCards').innerHTML = `
         <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Pending Approval</div><div class="text-xl font-bold text-amber-600">${stats.pendingApproval}</div></div>
         <div class="bg-white p-3 rounded-xl border"><div class="text-xs text-slate-500">Live Houses</div><div class="text-xl font-bold text-emerald-600">${stats.liveProperties}</div></div>
@@ -330,12 +322,23 @@
 
       adminProperties = properties || [];
       renderAdminProperties();
-      renderAdminPlans(plans || [], priorityPlans || []);
+      renderAdminPlans([], priorityPlans || []);
 
       document.getElementById('cAddPhotoPrice').value = config.add_photo_price || 30;
-      document.getElementById('cFreePosts').value = config.free_posts_allowed || 1;
+      document.getElementById('cFreePosts').value = config.free_posts_allowed || 5;
       document.getElementById('cFreeDays').value = config.free_post_duration_days || 14;
-      document.getElementById('cDefaultDays').value = config.default_post_duration_days || 30;
+      let contactUnlockPrices = {};
+      try {
+        contactUnlockPrices = JSON.parse(config.contact_unlock_prices || '{}');
+      } catch {
+        throw new Error('Configured contact unlock pricing is invalid. Correct it in the database before saving.');
+      }
+      document.getElementById('contactUnlockPrices').innerHTML = ADMIN_PROPERTY_TYPES.map((type) => `
+        <label class="space-y-1 text-xs font-semibold text-slate-600">${type} (KES)
+          <input data-contact-unlock-price="${escapeHtml(type)}" type="number" min="1" max="1000000" step="1"
+            value="${Number(contactUnlockPrices[type] ?? 10)}" class="w-full rounded border px-3 py-2 text-sm" required />
+        </label>
+      `).join('');
 
       document.getElementById('adminUsersList').innerHTML = (users || []).map((u) => `
         <div class="border rounded-lg p-2.5 flex justify-between items-center text-xs gap-2">
@@ -344,7 +347,6 @@
             <div class="text-slate-500">Call: ${u.call_phone || '-'} • WA: ${u.whatsapp_phone || '-'}</div>
           </div>
           <div class="flex shrink-0 gap-1.5">
-            <button type="button" onclick="giftUserPost('${u.id}', this)" class="px-2.5 py-1 rounded border border-emerald-400 font-semibold text-emerald-800">Gift posts</button>
             <button type="button" onclick="toggleUserSuspend('${u.id}', ${u.is_suspended ? 0 : 1}, this)" class="px-2.5 py-1 rounded border font-semibold">
               ${u.is_suspended ? 'Activate' : 'Suspend'}
             </button>
@@ -365,7 +367,7 @@
       const matches = adminProperties.filter((p) => {
         const expired = new Date(p.expires_at).getTime() <= Date.now() || p.availability_status === 'EXPIRED';
         if (filter === 'ALL') return true;
-        if (filter === 'EXPIRED') return expired;
+        if (filter === 'CONTACTS_LOCKED') return expired || Boolean(p.contact_hidden);
         if (filter === 'PAUSED') return p.availability_status === 'PAUSED';
         return p.approval_status === filter;
       });
@@ -393,6 +395,7 @@
         if (!Array.isArray(amenities)) amenities = [];
         if (!typePricing || typeof typePricing !== 'object' || Array.isArray(typePricing)) typePricing = {};
         const expired = new Date(p.expires_at).getTime() <= Date.now();
+        const contactsLocked = expired || Boolean(p.contact_hidden);
         const pricingRows = ADMIN_PROPERTY_TYPES.map((type) => {
           const rate = typePricing[type] || {};
           const period = rate.rent_period || p.rent_period || 'MONTH';
@@ -434,12 +437,12 @@
         <details class="border rounded-lg p-3 text-sm">
           <summary class="cursor-pointer">
             <strong>${escapeHtml(p.title)}</strong> (${escapeHtml(displayPropertyTypes(p))}) — ${escapeHtml(priceSummary)}
-            <span class="block text-slate-600">Owner: ${p.owner_name} · ${[p.town, p.county].filter(Boolean).join(', ')} · ${p.approval_status} / ${expired ? 'EXPIRED' : p.availability_status}</span>
+            <span class="block text-slate-600">Owner: ${p.owner_name} · ${[p.town, p.county].filter(Boolean).join(', ')} · ${p.approval_status} / ${p.availability_status} / ${contactsLocked ? 'CONTACTS LOCKED' : 'CONTACTS FREE'}</span>
           </summary>
           <div class="mt-3 space-y-2">
             <p><strong>Owner contact:</strong> ${p.contact_phone || '-'} · ${p.contact_whatsapp || '-'}</p>
             <p><strong>Location:</strong> ${[p.town, p.county, p.estate, p.pin_label].filter(Boolean).join(', ') || 'Not provided'}</p>
-            <p><strong>Expiry:</strong> ${new Date(p.expires_at).toLocaleString()}</p>
+            <p><strong>Free contact access until:</strong> ${new Date(p.expires_at).toLocaleString()}</p>
             <p><strong>Details:</strong> ${p.bedrooms || 0} bedroom(s), ${p.bathrooms || 1} bathroom(s) · Deposit ${Number(p.deposit || 0).toLocaleString()} KES · ${p.furnished_status || 'UNFURNISHED'} · Suitable for: ${p.target_tenants_desc || 'Not specified'}</p>
             <p><strong>Priority:</strong> ${p.priority_label || 'Normal'} · Score ${p.priority_score || 1} ${p.priority_expires_at ? `until ${new Date(p.priority_expires_at).toLocaleString()}` : ''}</p>
             <p><strong>Description:</strong> ${p.description || 'No description'}</p>
@@ -464,6 +467,10 @@
               <input data-field="pin_label" value="${escapeHtml(p.pin_label)}" placeholder="Location landmark" class="rounded border px-2 py-1.5" />
               <input data-field="contact_phone" value="${escapeHtml(p.contact_phone)}" placeholder="Contact phone" class="rounded border px-2 py-1.5" />
               <input data-field="contact_whatsapp" value="${escapeHtml(p.contact_whatsapp)}" placeholder="WhatsApp number" class="rounded border px-2 py-1.5" />
+              <label class="flex items-center gap-2 rounded border bg-white px-2 py-1.5 text-sm md:col-span-3">
+                <input data-field="contact_hidden" type="checkbox" ${p.contact_hidden ? 'checked' : ''} />
+                Hide this post's Call and WhatsApp contacts
+              </label>
               <input data-field="deposit" type="number" min="0" value="${Number(p.deposit || 0)}" placeholder="Deposit (KES)" class="rounded border px-2 py-1.5" />
               <input data-field="bedrooms" type="number" min="0" value="${Number(p.bedrooms || 0)}" placeholder="Bedrooms" class="rounded border px-2 py-1.5" />
               <input data-field="bathrooms" type="number" min="0" value="${Number(p.bathrooms || 0)}" placeholder="Bathrooms" class="rounded border px-2 py-1.5" />
@@ -480,7 +487,6 @@
                 <option value="AVAILABLE" ${p.availability_status === 'AVAILABLE' ? 'selected' : ''}>Available</option>
                 <option value="OCCUPIED" ${p.availability_status === 'OCCUPIED' ? 'selected' : ''}>Occupied</option>
                 <option value="PAUSED" ${p.availability_status === 'PAUSED' ? 'selected' : ''}>Paused</option>
-                <option value="EXPIRED" ${p.availability_status === 'EXPIRED' ? 'selected' : ''}>Expired</option>
                 <option value="PENDING_APPROVAL" ${p.availability_status === 'PENDING_APPROVAL' ? 'selected' : ''}>Pending approval</option>
               </select>
               <input data-field="target_tenants_desc" value="${escapeHtml(p.target_tenants_desc)}" placeholder="Suitable for" class="rounded border px-2 py-1.5 md:col-span-3" />
@@ -498,8 +504,8 @@
               <button type="button" onclick="actProp('${p.id}', 'reject', this)" class="rounded bg-amber-600 px-3 py-2 text-sm font-semibold text-white">Reject</button>
               <button type="button" onclick="actProp('${p.id}', 'pause', this)" class="rounded border px-3 py-2 text-sm font-semibold">Pause</button>
               ${p.availability_status === 'PAUSED' ? `<button type="button" onclick="actProp('${p.id}', 'restore', this)" class="rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Restore paused listing</button>` : ''}
-              <button type="button" onclick="extendProp('${p.id}', this)" class="rounded border px-3 py-2 text-sm font-semibold">${expired ? 'Add days to expired listing' : 'Extend listing'}</button>
-              <button type="button" onclick="giftProp('${p.id}', this)" class="rounded border border-emerald-400 px-3 py-2 text-sm font-semibold text-emerald-800">Gift listing days</button>
+              <button type="button" onclick="extendProp('${p.id}', this)" class="rounded border px-3 py-2 text-sm font-semibold">Extend free contact period</button>
+              <button type="button" onclick="giftProp('${p.id}', this)" class="rounded border border-emerald-400 px-3 py-2 text-sm font-semibold text-emerald-800">Gift free contact days</button>
               <button type="button" onclick="prioritizeProp('${p.id}', this)" class="rounded bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950">Set custom priority duration</button>
               <button type="button" onclick="delProp('${p.id}', this)" class="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white">Delete</button>
             </div>
@@ -531,9 +537,9 @@
             </div>
           </article>`;
       };
-      document.getElementById('adminPlansList').innerHTML = `
-        <div class="space-y-3"><h3 class="text-base font-bold">Post plans</h3>${plans.map((plan) => renderPlan(plan, 'post')).join('') || '<p class="text-sm text-slate-500">No post plans configured.</p>'}</div>
-        <div class="space-y-3"><h3 class="text-base font-bold">Priority boosts</h3>${priorityPlans.map((plan) => renderPlan(plan, 'priority')).join('') || '<p class="text-sm text-slate-500">No priority plans configured.</p>'}</div>`;
+      document.getElementById('adminPlansList').innerHTML =
+        priorityPlans.map((plan) => renderPlan(plan, 'priority')).join('')
+        || '<p class="text-sm text-slate-500">No priority plans configured.</p>';
     };
 
     window.saveAdminPlan = async (kind, id, btn) => {
@@ -686,6 +692,7 @@
             pin_label: field('pin_label'),
             contact_phone: field('contact_phone'),
             contact_whatsapp: field('contact_whatsapp'),
+            contact_hidden: form.querySelector('[data-field="contact_hidden"]').checked,
             deposit: Number(field('deposit')),
             bedrooms: Number(field('bedrooms')),
             bathrooms: Number(field('bathrooms')),
@@ -738,34 +745,18 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            add_photo_price: Number(document.getElementById('cAddPhotoPrice').value),
             free_posts_allowed: Number(document.getElementById('cFreePosts').value),
+            add_photo_price: Number(document.getElementById('cAddPhotoPrice').value),
             free_post_duration_days: Number(document.getElementById('cFreeDays').value),
-            default_post_duration_days: Number(document.getElementById('cDefaultDays').value),
+            contact_unlock_prices: Object.fromEntries(ADMIN_PROPERTY_TYPES.map((type) => [
+              type,
+              Number(document.querySelector(`[data-contact-unlock-price="${type}"]`).value),
+            ])),
           }),
         });
         adminBanner(data.message);
         await loadOverview();
       }, 'Saving...', 'Saved');
-    };
-
-    window.createPostPlan = async (e) => {
-      e.preventDefault();
-      await runWithButtonFeedback(e.submitter, async () => {
-        const data = await adminRequest(`${API_URL}/api/admin/plans`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: document.getElementById('ppName').value.trim(),
-            price: Number(document.getElementById('ppPrice').value),
-            posts_allowed: Number(document.getElementById('ppPosts').value),
-            duration_days: Number(document.getElementById('ppDays').value),
-          }),
-        });
-        e.target.reset();
-        adminBanner(data.message);
-        await loadOverview();
-      }, 'Saving...', 'Created');
     };
 
     window.createPriorityPlan = async (e) => {
@@ -797,32 +788,6 @@
         adminBanner(data.message);
         await loadOverview();
       }, 'Updating...', 'Updated');
-    };
-
-    window.giftUserPost = async (id, btn) => {
-      const postsInput = prompt('How many posts should be gifted? (1–1000)', '1');
-      if (postsInput === null) return;
-      const posts = Number(postsInput);
-      if (!Number.isInteger(posts) || posts < 1 || posts > 1000) {
-        adminBanner('Enter a whole number of posts between 1 and 1000.');
-        return;
-      }
-      const daysInput = prompt(`How many days until these ${posts} gifted post${posts === 1 ? '' : 's'} expire? (1–3650)`, '30');
-      if (daysInput === null) return;
-      const days = Number(daysInput);
-      if (!Number.isInteger(days) || days < 1 || days > 3650) {
-        adminBanner('Enter a whole number of gifted post days between 1 and 3650.');
-        return;
-      }
-      await runWithButtonFeedback(btn, async () => {
-        const data = await adminRequest(`${API_URL}/api/admin/users/${id}/gift-post`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ posts, days }),
-        });
-        adminBanner(data.message);
-        await loadOverview();
-      }, 'Gifting...', 'Gifted');
     };
 
     checkAccess();
